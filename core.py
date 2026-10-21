@@ -32,9 +32,18 @@ def embed(p,path):
     data=Path(path).read_bytes(); key=uid()+Path(path).suffix.lower(); p['assets'][key]=base64.b64encode(data).decode(); return key
 
 def render(p,text):
-    def sub(m):
-        item=resolve(p,m.group(2)); return m.group(1)+html.escape(item['name'] if item else '[Gelöschter Eintrag]')+m.group(3)
-    return re.sub(r'(<a[^>]*href="story:([^"\s]+)"[^>]*>).*?(</a>)',sub,text,flags=re.S)
+    def sub(match):
+        item=resolve(p,match.group(2));name=item['name'] if item else '[Gelöschter Eintrag]';body=match.group(3)
+        # Qt writes font, size and emphasis into spans inside the anchor.
+        # Preserve those spans on load and when changing the target's display name.
+        if html.unescape(re.sub(r'<[^>]*>','',body))==name:return match.group(0)
+        pieces=re.split(r'(<[^>]*>)',body);written=False
+        for i,piece in enumerate(pieces):
+            if piece.startswith('<'):continue
+            if html.unescape(piece).strip():pieces[i]=html.escape(name) if not written else '';written=True
+        if not written:pieces=[html.escape(name)]
+        return match.group(1)+''.join(pieces)+match.group(4)
+    return re.sub(r'(<a[^>]*href="story:([^"\s]+)"[^>]*>)(.*?)(</a>)',sub,text,flags=re.S)
 
 def references(p,id):
     return [o['name'] for o in objects(p) if o['id']!=id and (id in o.get('links',[]) or id in json.dumps(o.get('values',{})) or ('story:'+id) in o.get('html',''))]

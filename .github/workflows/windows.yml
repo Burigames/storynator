@@ -50,8 +50,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $tag = "v0.2.$env:GITHUB_RUN_NUMBER"
-          $notes = "Storynator mit neuem Schreibatelier-Design. Storynator.exe herunterladen und direkt starten. Keine Installation, kein Python, kein Internet fuer den Betrieb erforderlich. Windows x64. Enthalten: Editor, Welt, Timeline, Projektkalender und PDF-Export. Integrationstests und Starttest der gebauten EXE sind auf Windows bestanden."
+          $tag = "v0.3.$env:GITHUB_RUN_NUMBER"
+          $notes = "Storynator 0.3: Dark Mode, fuenf Akzentfarben, Deutsch/Englisch, Hover-Vorschauen, groessere Listen, korrigierte Editor- und Linkformatierung sowie gespeicherte Druckeinstellungen und Kapitelueberschriften. Storynator.exe herunterladen und direkt starten. Keine Installation, kein Python, kein Internet fuer den Betrieb erforderlich. Windows x64. Enthalten: Editor, Welt, Timeline, Projektkalender und PDF-Export. Integrationstests und Starttest der gebauten EXE sind auf Windows bestanden."
           gh release create $tag dist/Storynator.exe --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
       - uses: actions/upload-artifact@v4
         if: success()

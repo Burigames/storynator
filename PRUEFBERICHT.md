@@ -1,3 +1,19 @@
+# Prüfung der Version 0.3 · 21. Oktober 2026
+
+Lokal: **13 Integrationstests bestanden**. Die Windows-EXE wird erst nach denselben Tests auf Windows und einem Starttest der fertig gepackten Datei veröffentlicht.
+
+Neue Prüfungen:
+
+- Tatsächlicher Editorfont und Formatleistenwerte stimmen beim Öffnen überein. Ein Verweis und der Text danach behalten 19 pt, fett, kursiv, Unterstreichung und eine eigene Textfarbe nach ZIP-Speicherung und erneutem Laden. Dabei wird die stabile ID weiterhin verwendet.
+- Vier Listen-/Tabellenzeilen liegen innerhalb des tatsächlichen Viewports; Verknüpfungsfelder besitzen keine beschränkende Ein-Zeilen-Maximalhöhe.
+- Druckerlayout Letter/Querformat mit eigenen Rändern und Kapitelauswahl wird gespeichert und wieder geladen. Kapiteltitel erscheinen auch im erzeugten PDF-Text. Die Titel können abgeschaltet werden.
+- Einstellungen für Dark Mode, Akzent Ozean und Sprache Englisch werden gespeichert. Die englische Oberfläche startet mit übersetzten Bedienelementen und belässt den benutzerdefinierten Projektnamen unverändert. Ein Themewechsel verändert den Dokumentinhalt nicht.
+- Klick auf die rechte Fläche einer Navigationszeile öffnet das Kapitel. Schriftgrößenpfeile ändern auch gebrochene Größen tatsächlich im Editor; der Font-Dropdown-Pfeil öffnet die Auswahl. Ein Hover-Ereignis zeigt eine inzwischen geänderte Eintragsbeschreibung.
+
+Die ursprünglichen Projekt-, Kalender-, Bild-, PDF-, Verknüpfungs- und Speicherabbruchprüfungen laufen weiterhin. Physischer Druck und ein manueller Test auf unterschiedlichen Endnutzer-Geräten sind damit nicht ersetzt.
+
+---
+
 # Prüfbericht · 21. Oktober 2026
 
 ## Version 0.2 – Schreibatelier und Windows-EXE

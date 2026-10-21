@@ -1,5 +1,8 @@
 """Shared visual language: editorial type, quiet surfaces and vector icons."""
 from pathlib import Path
+import re
+from PySide6.QtCore import QSettings
+from i18n import tr
 from PySide6.QtCore import Qt, QSize, QByteArray, QRectF
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QPalette
 from PySide6.QtSvg import QSvgRenderer
@@ -40,17 +43,17 @@ def icon(name,color='#63736e',size=22):
     svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="-1 -1 27 27"><path d="{PATHS.get(name,PATHS["file"])}" fill="none" stroke="{color}" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     pix=QPixmap(size*2,size*2);pix.fill(Qt.transparent);p=QPainter(pix);QSvgRenderer(QByteArray(svg.encode())).render(p);p.end();pix.setDevicePixelRatio(2);return QIcon(pix)
 
-def label(text,role='body'):
-    w=QLabel(text);w.setProperty('role',role);return w
+def label(text,role='body',translate=True):
+    w=QLabel(tr(text) if translate else text);w.setProperty('role',role);return w
 
 def tool(name,tip,fn,text=''):
-    b=QToolButton();b.setIcon(icon(name));b.setIconSize(QSize(19,19));b.setToolTip(tip);b.setCursor(Qt.PointingHandCursor);b.setFocusPolicy(Qt.NoFocus);b.clicked.connect(fn)
-    if text:b.setText(text);b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+    b=QToolButton();b.setProperty('iconName',name);b.setIcon(icon(name));b.setIconSize(QSize(19,19));b.setToolTip(tr(tip));b.setCursor(Qt.PointingHandCursor);b.setFocusPolicy(Qt.NoFocus);b.clicked.connect(fn)
+    if text:b.setText(tr(text));b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
     return b
 
 def primary(text,fn,name=None):
-    b=QPushButton(text);b.setProperty('role','primary');b.setCursor(Qt.PointingHandCursor);b.clicked.connect(fn)
-    if name:b.setIcon(icon(name,'#ffffff'))
+    b=QPushButton(tr(text));b.setProperty('role','primary');b.setCursor(Qt.PointingHandCursor);b.clicked.connect(fn)
+    if name:b.setProperty('iconName',name);b.setIcon(icon(name,'#ffffff'))
     return b
 
 def shadow(w):
@@ -59,7 +62,7 @@ def shadow(w):
 STYLE='''
 * { selection-background-color:#d2e9dd; selection-color:#163e30; }
 QMainWindow { background:#f3f4f0; }
-QWidget { font-family:"Segoe UI","Inter","DejaVu Sans"; font-size:13px; color:#283e35; }
+QWidget { color:#283e35; }
 QDialog { background:#f7f8f5; }
 QLabel { background:transparent; }
 QLabel[role="muted"] { color:#87948d; font-size:12px; }
@@ -100,7 +103,15 @@ QToolButton:hover,QToolButton:checked { background:#e5ecdf; }
 QLineEdit,QComboBox,QSpinBox,QDoubleSpinBox { background:#fffefa; border:1px solid #dce4d6; border-radius:6px; padding:8px; min-height:18px; }
 QLineEdit:focus,QComboBox:focus,QTextEdit:focus,QPlainTextEdit:focus { border-color:#7e9e79; }
 QLineEdit#globalSearch { background:#f0f3ed; border:0; padding-left:12px; }
-QComboBox::drop-down { border:0; width:20px; }
+QComboBox::drop-down { border:0; width:28px; }
+QComboBox { padding-right:30px; }
+QComboBox::down-arrow { image:none; }
+QSpinBox,QDoubleSpinBox { padding-right:24px; }
+QSpinBox::up-button,QDoubleSpinBox::up-button { subcontrol-origin:border; subcontrol-position:top right; width:22px; height:18px; border:0; }
+QSpinBox::down-button,QDoubleSpinBox::down-button { subcontrol-origin:border; subcontrol-position:bottom right; width:22px; height:18px; border:0; }
+QSpinBox::up-arrow,QSpinBox::down-arrow,QDoubleSpinBox::up-arrow,QDoubleSpinBox::down-arrow { image:none; }
+QToolButton { min-width:20px; min-height:20px; }
+QPlainTextEdit { min-height:150px; }
 QTextEdit,QPlainTextEdit,QListWidget,QTreeWidget,QTableWidget { background:#fffefa; border:1px solid #dce4d6; border-radius:7px; padding:8px; }
 QTextEdit#manuscript { border:0; border-radius:0; padding:0; background:#fffefa; color:#303c33; }
 QTextEdit#fieldEditor { min-height:130px; }
@@ -138,6 +149,35 @@ QCheckBox::indicator:checked { background:#55794b; border-color:#55794b; }
 QToolTip { background:#213e2d; color:white; border:0; padding:6px; }
 '''
 
-def apply_theme(app):
-    app.setStyle('Fusion');app.setFont(QFont('Segoe UI',10));app.setStyleSheet(STYLE)
-    palette=app.palette();palette.setColor(QPalette.Window,QColor('#f3f4f0'));palette.setColor(QPalette.WindowText,QColor('#283e35'));palette.setColor(QPalette.Text,QColor('#283e35'));palette.setColor(QPalette.Base,QColor('#fffefa'));palette.setColor(QPalette.Highlight,QColor('#d2e9dd'));palette.setColor(QPalette.HighlightedText,QColor('#163e30'));app.setPalette(palette)
+ACCENTS={'forest':('#365d43','#86ac77'),'ocean':('#235e87','#74b5de'),'lavender':('#70549b','#b29ae4'),'amber':('#8a5d19','#e5b568'),'rose':('#97536d','#df9ab8')}
+CURRENT={'mode':'light','accent':'forest','link':'#365d43'}
+
+def theme_colors(mode,accent):
+    dark=mode=='dark';base,bright=ACCENTS.get(accent,ACCENTS['forest'])
+    return {'window':'#171d23' if dark else '#f3f4f0','paper':'#20282f' if dark else '#fffefa','text':'#e0e7ed' if dark else '#283e35','muted':'#a0aeb8' if dark else '#687a70','border':'#36434c' if dark else '#dce4d6','accent':bright if dark else base,'selected':'#314453' if dark else '#e5eddf'}
+
+def apply_theme(app,mode=None,accent=None):
+    settings=QSettings('Storynator','Storynator');mode=mode or settings.value('appearance/mode','light');accent=accent or settings.value('appearance/accent','forest');mode=mode if mode in ('light','dark') else 'light';accent=accent if accent in ACCENTS else 'forest'
+    CURRENT.update(mode=mode,accent=accent);colors=theme_colors(mode,accent);CURRENT['link']=colors['accent'];style=STYLE
+    replacements={'#365d43':ACCENTS[accent][0],'#284c35':QColor(ACCENTS[accent][0]).darker(120).name(),'#597f52':colors['accent'],'#2f573b':colors['accent'],'#55794b':colors['accent'],'#7e9e79':colors['accent']}
+    if accent!='forest':
+        base=QColor(ACCENTS[accent][0])
+        for source,factor in [('#192c26',260),('#233b30',200),('#314c3c',150),('#34513e',120),('#2a4636',150),('#243e31',170),('#223d30',170)]:replacements[source]=base.darker(factor).name()
+    if mode=='dark':
+        paper=['#fffefa','#fbfcf9','#f7f8f5'];back=['#f3f4f0'];dark_text=['#283e35','#203c30','#243e32','#303c33','#3c5445','#24452e','#2f5437'];muted=['#87948d','#84918a','#687a70','#87948a','#6c7d70','#839080','#647761','#607a65','#4d6d50'];border=['#e0e5dd','#e1e5de','#e7e7dd','#e1e7dc','#dbe2d6','#dce4d6','#dae3d3','#b9cbb9','#eef0e9','#e4e9df','#b9cbb0','#c9d3c2'];surfaces=['#e5eadf','#e9eee4','#dce6d5','#ecf1e7','#e5ecdf','#f0f3ed','#e2e9dc','#dfe8d8','#edf1e7','#e5eddf','#e1e8da','#d2e9dd']
+        for value in paper:replacements[value]=colors['paper']
+        for value in back:replacements[value]=colors['window']
+        for value in dark_text:replacements[value]=colors['text']
+        for value in muted:replacements[value]=colors['muted']
+        for value in border:replacements[value]=colors['border']
+        for value in surfaces:replacements[value]=colors['selected']
+        replacements['#163e30']=colors['text']
+    style=re.sub(r'#[0-9a-fA-F]{6}',lambda m:replacements.get(m.group(),m.group()),style)
+    app.setStyle('Fusion');app.setFont(QFont('Segoe UI',10));app.setStyleSheet(style)
+    palette=app.palette()
+    for role,key in [(QPalette.Window,'window'),(QPalette.WindowText,'text'),(QPalette.Text,'text'),(QPalette.Base,'paper'),(QPalette.Button,'paper'),(QPalette.ButtonText,'text'),(QPalette.Highlight,'selected'),(QPalette.HighlightedText,'text'),(QPalette.ToolTipBase,'paper'),(QPalette.ToolTipText,'text')]:palette.setColor(role,QColor(colors[key]))
+    app.setPalette(palette)
+    # Re-render vector icons after theme changes; their names remain stable.
+    for widget in app.allWidgets():
+        name=widget.property('iconName')
+        if name and hasattr(widget,'setIcon'):widget.setIcon(icon(name,'#ffffff' if widget.property('role')=='primary' else colors['muted']))

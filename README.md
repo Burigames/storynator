@@ -22,10 +22,22 @@ Dunkelgrüne Navigation, warme Papierfläche, zurückhaltende Symbolleiste und v
 
 ![Storynator Schreibatelier](Vorschau.png)
 
+![Storynator Dark Mode – Ozean](Vorschau-Dark.png)
+
+## Neu in Version 0.3
+
+- Listen, Verknüpfungsfelder und Tabellen haben Platz für mindestens vier Zeilen; lange Formulare und schmale Fenster scrollen als Ganzes.
+- Die Formatleiste zeigt das tatsächliche Format am Cursor an, auch gebrochene Schriftgrößen. Neue Verweise und der Text danach übernehmen Schriftart, Größe und Hervorhebungen des umgebenden Texts. Die Formatierung bleibt beim Wiederöffnen und Umbenennen erhalten.
+- Dropdowns und Zahlenfelder besitzen explizit gezeichnete Pfeile. Navigation und beschriftete Schaltflächen reagieren auf die ganze Zeile beziehungsweise Fläche.
+- Unter **Einstellungen** sind Hell/Dunkel und fünf Akzentfarben wählbar: Wald, Ozean, Lavendel, Bernstein und Rose. Diese Änderungen wirken sofort und werden lokal gespeichert.
+- Dort lässt sich die Oberfläche auf **Deutsch oder Englisch** einstellen. Die Sprache wird beim nächsten Start angewendet. Projektnamen, Inhalte, Kategorien, Feldnamen und Kalender bleiben unverändert. Standard-Schaltflächen und Qt-Druckdialoge werden ebenfalls übersetzt; native Systemdialoge folgen gegebenenfalls der Windows-Sprache.
+- Beim Hover über Verweise, Navigationseinträge und Welt-Schaltflächen erscheint eine aktuelle Vorschau mit Namen, Kategorie, Beschreibung und ausgewählten Feldern.
+- Druckeinstellungen werden im Projekt gespeichert; allgemeine Vorgaben gelten zusätzlich für neue Projekte. Kapitelnamen werden beim Drucken/PDF standardmäßig ausgegeben. Einzelne Kapitel erhalten ihren Namen als vorgeschlagenen PDF-Dateinamen.
+
 ## Erste Schritte
 
 - Auf der Startseite Projekt erstellen oder `Beispiel.storynator` öffnen. Speichern mit Strg+S; Speichern unter mit Strg+Umschalt+S.
-- **Editor:** Kapitel erstellen. Doppelklick in der linken Navigation öffnet Dokumente in Tabs. Text über die Werkzeugleiste formatieren. Bilder über „Bild“ importieren oder als Bild aus der Zwischenablage einfügen. Einfügen von fremdem Richtext übernimmt bewusst nur Text, um externe Bildpfade zu vermeiden.
+- **Editor:** Kapitel erstellen. Ein Klick auf die ganze Zeile in der linken Navigation öffnet Dokumente in Tabs. Text über die Werkzeugleiste formatieren. Bilder über „Bild“ importieren oder als Bild aus der Zwischenablage einfügen. Einfügen von fremdem Richtext übernimmt bewusst nur Text, um externe Bildpfade zu vermeiden.
 - **Welt:** Kategorie erstellen; in der Vorlage beliebige Felder ergänzen und ihren Typ auswählen. Doppelklick auf „Einstellungen öffnen“ konfiguriert Dropdown-Optionen, Mehrfachauswahl oder Slider. Änderungen mit „Vorlage übernehmen“ bestätigen. Danach Welt-Einträge für diese Kategorie erstellen.
 - **Verknüpfungen:** Im Text `@` eingeben, Namen suchen, Ergebnis doppelklicken. Im festen Feld „Verknüpfungen“ auf „@ Verknüpfen“ klicken. Links können auch Dokumente und Timeline-Einträge öffnen. Das Ausgangsdokument bleibt in seinem Tab mit seiner Schreibposition erhalten. Gleiche Namen werden durch Kategorie und Beschreibung unterschieden. Interne UUIDs werden nicht angezeigt.
 - **Umbenennen:** Eintrag links auswählen und Menü „Eintrag → Umbenennen“ benutzen. Referenzen verwenden weiterhin dieselbe UUID und zeigen den neuen Namen. „Löschen“ warnt vor Verweisen; verbleibende Links erscheinen als gelöschte Einträge. Eine Kategorie mit Inhalten lässt sich nicht versehentlich mitsamt ihren Einträgen löschen.
@@ -36,7 +48,7 @@ Dunkelgrüne Navigation, warme Papierfläche, zurückhaltende Symbolleiste und v
 - „Timeline“ zeigt Liste und Zeitstrahl. Jede Position hat eine eigene auswählbare Spur. Strg+Mausrad zoomt, Ziehen verschiebt den Zeitstrahl. Nach Änderungen „Aktualisieren“ betätigen. Die Achse zeigt Tage beziehungsweise Jahre relativ zum Kalenderursprung; die Liste zeigt formatierte Daten.
 - **Suche:** Suchtext oben rechts eingeben und Enter drücken. Ein Ergebnis per Doppelklick öffnen.
 - **Sortieren:** Kapitel/Kategorie/Eintrag in der Navigation auswählen, Menü „Eintrag → Nach oben/Nach unten“.
-- **Drucken/PDF:** Strg+P, Kapitel auswählen, Papier und Ränder einstellen, Druckvorschau öffnen oder direkt PDF exportieren. Kapitel beginnen im Export jeweils auf einer neuen Seite. Zusätzliche Seitenumbrüche lassen sich im Editor einfügen. Links werden als normaler schwarzer Text ohne Verknüpfungsunterstreichung exportiert; fett, kursiv, Schriftart und Schriftgröße bleiben erhalten.
+- **Drucken/PDF:** Strg+P, Kapitel auswählen, Papier und Ränder einstellen, Druckvorschau öffnen oder direkt PDF exportieren. Kapitel beginnen im Export jeweils auf einer neuen Seite. Zusätzliche Seitenumbrüche lassen sich im Editor einfügen. Die zusätzliche Verknüpfungsfarbe entfällt beim Export; die ursprüngliche Schriftart, Größe, Farbe und Hervorhebung des Textes bleiben erhalten. Kapitelnamen erscheinen standardmäßig als Überschriften; dies lässt sich im Druckdialog abwählen. Papierformat, Ränder, Ausrichtung, Kapitelauswahl und weitere allgemeine Druckoptionen werden gespeichert. Beim PDF-Export eines einzelnen Kapitels wird sein Name als Dateiname vorgeschlagen.
 
 ## Speicherung und Sicherheit
 
@@ -49,6 +61,9 @@ Alle 30 Sekunden gibt es bei Änderungen eine lokale Wiederherstellungskopie im 
 ## Technischer Aufbau
 
 - `core.py`: Projektmodell, versionierter ZIP-Container, atomarer Austausch, eingebettete Ressourcen, UUID-Auflösung, Rückverweise, Kalenderarithmetik.
+- `ui.py`: Mindestgrößen, vollständige Bedienflächen und explizite Dropdown-/Schritt-Pfeile.
+- `i18n.py`: Offline-Sprachkatalog und Qt-Übersetzungen.
+- `printing.py`: portable Druckeinstellungen und lokale Druckervorgaben.
 - `design.py`: gemeinsames Gestaltungssystem und skalierbare Vektorsymbole.
 - `scripts/build_windows.py`: einzelnes Windows-EXE-Paket; `.github/workflows/windows.yml`: Tests, Build, EXE-Prüfung und Release.
 - `app.py`: Qt-Oberfläche, Richtexteditor, Kategorievorlagen und Felder, projektweite Suche, Tabs, Timeline, Kalenderdialog, Drucken/PDF.
