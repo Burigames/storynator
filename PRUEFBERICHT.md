@@ -1,5 +1,15 @@
 # Prüfbericht · 21. Oktober 2026
 
+## Version 0.2 – Schreibatelier und Windows-EXE
+
+Sieben Integrationstests sind unter Linux und unter Windows Server 2025 (nativer Qt-Windows-Plattformtreiber) bestanden. Die gebaute einzelne `Storynator.exe` wurde auf Windows gestartet. Der EXE-Test lädt das eingebettete Beispiel, öffnet Editor und Timeline, speichert und liest eine Projektdatei und erzeugt ein PDF. Der erfolgreiche Workflow veröffentlicht die Datei automatisch als GitHub-Release.
+
+Geprüfter Windows-Lauf: https://github.com/Burigames/storynator/actions/runs/39632103316
+
+Die folgenden ursprünglichen Detailtests dokumentieren zusätzlich den Stand der ersten Version; deren Aussage „Windows-EXE nicht durchgeführt“ gilt für Version 0.1. Physischer Druck und ein ausführlicher manueller Windows-Test auf Endnutzer-Geräten stehen weiterhin aus.
+
+## Ursprünglicher Prüfstand (Version 0.1)
+
 Umgebung: Linux, Python 3.11, PySide6 6.12.0, Qt-Offscreen-Plattform.
 
 Ergebnis: **7 automatisierte Tests unter Linux bestanden** (`python -m pytest -q`).

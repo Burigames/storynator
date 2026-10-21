@@ -2,6 +2,12 @@ name: Windows EXE
 on:
   push:
     branches: [main]
+    paths:
+      - '**.py'
+      - 'requirements*.txt'
+      - 'assets/**'
+      - 'Beispiel.storynator'
+      - '.github/workflows/windows.yml'
   workflow_dispatch:
 permissions:
   contents: write

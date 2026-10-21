@@ -98,7 +98,7 @@ def test_template_and_calendar_dialogs(qt,monkeypatch):
 def test_studio_navigation_focus_and_packaged_example(qt):
     from design import apply_theme
     apply_theme(qt);w=Main(recover=False);w.tabs.clear();w.p=sample();w.refresh();w.show();qt.processEvents()
-    w.navigate('editor');editor=w.editor();assert editor is not None;assert editor.objectName()=='manuscript';assert w.nav_buttons['editor'].isChecked()
+    before=w.p['documents'][0]['html'];w.dirty=False;w.navigate('editor');assert not w.dirty;assert w.p['documents'][0]['html']==before;editor=w.editor();assert editor is not None;assert editor.objectName()=='manuscript';assert w.nav_buttons['editor'].isChecked()
     cursor=editor.textCursor();cursor.setPosition(3);editor.setTextCursor(cursor)
     w.toggle_focus();assert not w.centralWidget().widget(0).isVisible();assert not w.tabs.currentWidget().findChild(QFrame,'context').isVisible()
     w.toggle_focus();assert w.centralWidget().widget(0).isVisible();assert editor.textCursor().position()==3

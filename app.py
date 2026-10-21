@@ -376,7 +376,7 @@ class Main(QMainWindow):
             meta=QHBoxLayout();meta.addWidget(label('MANUSKRIPT  /  '+str(self.p['documents'].index(o)+1).zfill(2),'eyebrow'));meta.addStretch();meta.addWidget(label('Deine Worte haben Raum.','muted'));canvas_l.addLayout(meta)
             paper=QFrame();paper.setObjectName('paper');paper.setMaximumWidth(880);paper_l=QVBoxLayout(paper);paper_l.setContentsMargins(65,40,65,24);paper_l.setSpacing(17)
             heading=label(o['name'],'title');heading.setObjectName('entryHeading');heading.setFont(QFont('Georgia',23));paper_l.addWidget(heading)
-            e=Rich(self,o);e.setObjectName('manuscript');e.setFont(QFont('Georgia',14));e.document().setDocumentMargin(0);e.setPlaceholderText('Jede Geschichte beginnt mit einem ersten Satz …');paper_l.addWidget(e,1);shadow(paper)
+            e=Rich(self,o);e.blockSignals(True);e.setObjectName('manuscript');e.document().setDocumentMargin(0);e.setPlaceholderText('Jede Geschichte beginnt mit einem ersten Satz …');e.blockSignals(False);paper_l.addWidget(e,1);shadow(paper)
             centered=QHBoxLayout();centered.addStretch(1);centered.addWidget(paper,12);centered.addStretch(1);canvas_l.addLayout(centered,1);body.addWidget(canvas,1)
             context=QFrame();context.setObjectName('context');context.setFixedWidth(225);cx=QVBoxLayout(context);cx.setContentsMargins(0,2,22,18);cx.setSpacing(15);cx.addWidget(label('DEINE GESCHICHTE','eyebrow'));cx.addSpacing(5);cx.addWidget(label('Alles ist verbunden.'));hint=label('Verknüpfe beim Schreiben deine Figuren, Orte und Ereignisse.','muted');hint.setWordWrap(True);cx.addWidget(hint)
             chip=button('@  Eintrag verknüpfen',e.link);chip.setProperty('role','chip');cx.addWidget(chip);cx.addSpacing(15);cx.addWidget(label('AUS DEINER WELT','eyebrow'))
@@ -524,7 +524,7 @@ class Main(QMainWindow):
             except Exception as e:self.error(e)
         l.addWidget(button('Vorlage übernehmen',commit));d.exec()
     def calendar(self):
-        c=json.loads(json.dumps(self.p['calendar']));d=QDialog(self);d.setWindowTitle('Projektkalender');d.resize(760,730);l=QVBoxLayout(d);form=QFormLayout();l.addLayout(form)
+        c=json.loads(json.dumps(self.p['calendar']));d=QDialog(self);d.setWindowTitle('Projektkalender');d.resize(760,680);outer=QVBoxLayout(d);scroll=QScrollArea();scroll.setWidgetResizable(True);inner=QWidget();l=QVBoxLayout(inner);scroll.setWidget(inner);outer.addWidget(scroll);form=QFormLayout();l.addLayout(form)
         name=QLineEdit(c['name']);epoch=QSpinBox();epoch.setRange(-1000000,1000000);epoch.setValue(c['epoch']);zero=QCheckBox('Jahr null verwenden');zero.setChecked(c['year_zero']);yearonly=QCheckBox('Nur Jahreszahlen verwenden');yearonly.setChecked(not c['months']);week=QLineEdit(', '.join(c.get('week',[])));fmt=QLineEdit(c['format']);units=[]
         form.addRow('Name der Zeitrechnung',name);form.addRow('Ausgangsjahr',epoch);form.addRow(zero);form.addRow(yearonly)
         for key,label in [('year','Jahreseinheit'),('month','Monatseinheit'),('day','Tageseinheit')]:
@@ -650,7 +650,11 @@ from PySide6.QtCore import QStandardPaths
 
 def main():
     app=QApplication(sys.argv);app.setApplicationName('Storynator');app.setOrganizationName('Storynator');apply_theme(app)
-    smoke='--smoke-test' in sys.argv;w=Main(recover=not smoke);w.show()
+    smoke='--smoke-test' in sys.argv;w=Main(recover=not smoke)
+    screen=app.primaryScreen()
+    if screen:
+        area=screen.availableGeometry();w.resize(min(1500,max(1050,area.width()-40)),min(960,max(700,area.height()-60)))
+    w.show()
     if smoke:
         def check():
             try:
