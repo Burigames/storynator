@@ -1,17 +1,30 @@
 """Read-first world entry pages, with expandable rich text and linked field values."""
 import base64,html
 from PySide6.QtCore import Qt,QUrl,QSize
-from PySide6.QtGui import QImage,QPixmap,QTextDocument,QIcon
-from PySide6.QtWidgets import QWidget,QLabel,QVBoxLayout,QHBoxLayout,QGridLayout,QFrame,QTextBrowser,QPushButton,QProgressBar,QDialog,QScrollArea,QSizePolicy
+from PySide6.QtGui import QImage,QPixmap,QTextDocument,QIcon,QTextCursor,QTextFormat,QColor
+from PySide6.QtWidgets import QWidget,QLabel,QVBoxLayout,QHBoxLayout,QGridLayout,QFrame,QTextBrowser,QPushButton,QProgressBar,QDialog,QScrollArea,QSizePolicy,QTextEdit
 from core import resolve,render,Calendar
-from design import label,primary,icon
+from design import label,primary,icon,CURRENT
 from i18n import tr
 
 class RichDisplay(QTextBrowser):
     def __init__(self,host,text):
         super().__init__();self.setReadOnly(True);self.setOpenLinks(False);self.setFrameShape(QFrame.NoFrame);self.setStyleSheet('QTextBrowser{border:0;background:transparent;padding:0;}');self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff);self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff);self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
         for key,value in host.p['assets'].items():self.document().addResource(QTextDocument.ImageResource,QUrl('asset:'+key),QImage.fromData(base64.b64decode(value)))
-        self.setHtml(render(host.p,text));self.anchorClicked.connect(lambda url:host.open_object(url.toString()[6:]) if url.toString().startswith('story:') else None);self.document().documentLayout().documentSizeChanged.connect(lambda _:self.fit_text());self.fit_text()
+        self.setHtml(render(host.p,text));self.update_marks();self.anchorClicked.connect(lambda url:host.open_object(url.toString()[6:]) if url.toString().startswith('story:') else None);self.document().documentLayout().documentSizeChanged.connect(lambda _:self.fit_text());self.fit_text()
+    def update_marks(self):
+        selections=[];block=self.document().begin()
+        while block.isValid():
+            it=block.begin()
+            while not it.atEnd():
+                frag=it.fragment()
+                if frag.isValid():
+                    fmt=frag.charFormat();anchor=fmt.isAnchor() and fmt.anchorHref().startswith('story:');black=CURRENT['mode']=='dark' and fmt.hasProperty(QTextFormat.ForegroundBrush) and fmt.foreground().color().lightness()<45
+                    if anchor or black:
+                        selection=QTextEdit.ExtraSelection();selection.cursor=QTextCursor(self.document());selection.cursor.setPosition(frag.position());selection.cursor.setPosition(frag.position()+frag.length(),QTextCursor.KeepAnchor);selection.format.setForeground(QColor(CURRENT['link'] if anchor else '#e0e7ed'));selections.append(selection)
+                it+=1
+            block=block.next()
+        self.setExtraSelections(selections)
     def fit_text(self):
         height=max(28,int(self.document().size().height())+14)
         if self.height()!=height:self.setFixedHeight(height)

@@ -29,6 +29,8 @@ def test_presets_are_templates_and_preserve_data(qt,tmp_path):
     addons.disable(p,state['id']);assert character in addons.visible_categories(p);addons.enable(p,addons.BUILTIN);assert ids==[c['id'] for c in p['categories']]
     path=tmp_path/'test.storynator';save_project(p,path);p=load_project(path);assert p['addons'][0]['enabled']
     addons.remove(p,settings,state['id']);assert p['entries'][0]['name']=='Private secret';assert any(c['id']==character['id'] for c in p['categories']);assert any(c['id']==race['id'] for c in p['categories'])
+    bad=copy.deepcopy(addons.BUILTIN);bad['categories'][2]['fields'][-1]['max']=float('inf')
+    with pytest.raises(ValueError):addons.validate(bad)
     for placement in ['root','category','field']:
         bad=copy.deepcopy(addons.BUILTIN)
         target=bad if placement=='root' else bad['categories'][0] if placement=='category' else bad['categories'][0]['fields'][0]
@@ -59,4 +61,6 @@ def test_print_background_white_even_dark(qt):
     import tempfile
     with tempfile.TemporaryDirectory() as folder:
         path=folder+'/white.pdf';printer=QPrinter();printer.setOutputFormat(QPrinter.PdfFormat);printer.setOutputFileName(path);doc.print_(printer);pdf=QPdfDocument();pdf.load(path);image=pdf.render(0,__import__('PySide6.QtCore',fromlist=['QSize']).QSize(600,800));assert not image.isNull();assert image.pixelColor(300,400)==QColor('white');pdf.close()
+    from worldview import RichDisplay
+    view=RichDisplay(w,'<p><span style="color:#000000">Dark text</span></p>');assert view.extraSelections();assert view.document().begin().begin().fragment().charFormat().foreground().color()==QColor('black');apply_theme(qt,'light','ocean');assert not view.extraSelections();view.close()
     w.dirty=False;w.close();apply_theme(qt)

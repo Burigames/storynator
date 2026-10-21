@@ -181,5 +181,6 @@ def apply_theme(app,mode=None,accent=None):
     for widget in app.allWidgets():
         name=widget.property('iconName')
         if name and hasattr(widget,'setIcon'):widget.setIcon(icon(name,'#ffffff' if widget.property('role')=='primary' else colors['muted']))
+        if hasattr(widget,'update_marks'):widget.update_marks()
         if widget.objectName() in ['brandMark','heroMark']:
             size=36 if widget.objectName()=='brandMark' else 180;widget.setPixmap(icon('feather',colors['accent'],size).pixmap(size,size))
