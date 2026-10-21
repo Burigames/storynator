@@ -60,7 +60,9 @@ def test_print_background_white_even_dark(qt):
     from PySide6.QtPdf import QPdfDocument
     import tempfile
     with tempfile.TemporaryDirectory() as folder:
-        path=folder+'/white.pdf';printer=QPrinter();printer.setOutputFormat(QPrinter.PdfFormat);printer.setOutputFileName(path);doc.print_(printer);pdf=QPdfDocument();pdf.load(path);image=pdf.render(0,__import__('PySide6.QtCore',fromlist=['QSize']).QSize(600,800));assert not image.isNull();assert image.pixelColor(300,400)==QColor('white');pdf.close()
+        path=folder+'/white.pdf';printer=QPrinter();printer.setOutputFormat(QPrinter.PdfFormat);printer.setOutputFileName(path);doc.print_(printer);del printer
+        from PySide6.QtCore import QBuffer,QByteArray,QIODevice
+        data=QByteArray(__import__('pathlib').Path(path).read_bytes());buffer=QBuffer(data);buffer.open(QIODevice.ReadOnly);pdf=QPdfDocument();pdf.load(buffer);image=pdf.render(0,__import__('PySide6.QtCore',fromlist=['QSize']).QSize(600,800));assert not image.isNull();assert image.pixelColor(300,400)==QColor('white');pdf.close();del pdf;buffer.close()
     from worldview import RichDisplay
     view=RichDisplay(w,'<p><span style="color:#000000">Dark text</span></p>');assert view.extraSelections();assert view.document().begin().begin().fragment().charFormat().foreground().color()==QColor('black');apply_theme(qt,'light','ocean');assert not view.extraSelections();view.close()
     w.dirty=False;w.close();apply_theme(qt)
