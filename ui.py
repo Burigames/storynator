@@ -14,7 +14,11 @@ def roomy(view,rows=4):
 class RoomyList(QListWidget):
     def __init__(self,*args):super().__init__(*args);roomy(self);self.setUniformItemSizes(True)
 class RoomyTable(QTableWidget):
-    def __init__(self,*args):super().__init__(*args);roomy(self);self.setWordWrap(False)
+    def __init__(self,*args):
+        super().__init__(*args);roomy(self);self.setWordWrap(False);self.verticalHeader().sectionResized.connect(self.fit_rows);self.horizontalHeader().geometriesChanged.connect(self.fit_rows);self.fit_rows()
+    def fit_rows(self,*args):
+        height=max([self.verticalHeader().defaultSectionSize(),38]+[self.rowHeight(r) for r in range(min(4,self.rowCount()))]);minimum=4*height+self.horizontalHeader().height()+40
+        if self.minimumHeight()!=minimum:self.setMinimumHeight(minimum)
 class RoomyTree(QTreeWidget):
     def __init__(self,*args):super().__init__(*args);roomy(self,5);self.setUniformRowHeights(True)
 

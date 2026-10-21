@@ -137,7 +137,7 @@ def test_lists_and_tables_show_four_rows(qt):
     for widget in [RoomyList(),RoomyTable(6,2)]:
         if isinstance(widget,RoomyList):widget.addItems(['One','Two','Three','Four','Five','Six'])
         else:
-            for row in range(6):widget.setItem(row,0,QTableWidgetItem(str(row)))
+            for row in range(6):widget.setItem(row,0,QTableWidgetItem(str(row)));widget.setRowHeight(row,43)
         widget.resize(450,1);widget.show();qt.processEvents()
         rect=widget.visualItemRect(widget.item(3)) if isinstance(widget,RoomyList) else widget.visualItemRect(widget.item(3,0))
         assert rect.bottom()<widget.viewport().height();widget.hide();widget.deleteLater()
