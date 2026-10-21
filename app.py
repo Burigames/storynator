@@ -1,10 +1,11 @@
 import sys, json, base64, os
 from pathlib import Path
-from PySide6.QtCore import Qt, QTimer, QUrl, QSettings, QMarginsF
+from PySide6.QtCore import Qt, QTimer, QUrl, QSettings, QMarginsF, QSize
 from PySide6.QtGui import QAction, QFont, QTextCharFormat, QTextCursor, QTextDocument, QImage, QTextImageFormat, QTextFormat, QTextListFormat, QColor, QPageSize
 from PySide6.QtWidgets import *
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog, QPageSetupDialog
 from core import *
+from design import icon, label, tool, primary, shadow, apply_theme
 
 TYPES=['Text','Richtext','Zahl','Checkbox','Dropdown','Mehrfachauswahl','Slider','Bild','Galerie','Datum','Zeitspanne','Verknüpfung']
 FIELD_RENDERERS={}
@@ -14,7 +15,7 @@ def register_field_type(name,renderer):
 
 
 def button(text,fn):
-    b=QPushButton(text); b.clicked.connect(fn); return b
+    b=QPushButton(text); b.setCursor(Qt.PointingHandCursor); b.clicked.connect(fn); return b
 
 def ask(parent,title,value=''):
     s,ok=QInputDialog.getText(parent,title,'Name:',text=value); return s.strip() if ok and s.strip() else None
@@ -35,7 +36,7 @@ class Picker(QDialog):
 
 class Rich(QTextEdit):
     def __init__(self,w,obj,key='html'):
-        super().__init__(); self.w=w; self.obj=obj; self.key=key; self.setAcceptRichText(True); self.setFont(QFont('Georgia',12)); self.document().setDocumentMargin(35)
+        super().__init__(); self.w=w; self.obj=obj; self.key=key; self.setAcceptRichText(True); self.setFont(QFont('Georgia',14)); self.document().setDocumentMargin(35)
         self.load_assets(); self.setHtml(render(w.p,obj.get(key,''))); self.textChanged.connect(self.store)
     def load_assets(self):
         for k,v in self.w.p['assets'].items(): self.document().addResource(QTextDocument.ImageResource,QUrl('asset:'+k),QImage.fromData(base64.b64decode(v)))
@@ -67,42 +68,103 @@ class TimelineView(QGraphicsView):
         else: super().wheelEvent(e)
 
 class Main(QMainWindow):
-    def __init__(self):
-        super().__init__(); self.p=new_project(); self.path=None; self.dirty=False; self.settings=QSettings('Storynator','Storynator'); self.resize(1280,820)
+    def __init__(self, recover=True):
+        super().__init__()
+        self.p=new_project();self.path=None;self.dirty=False;self.section='editor'
+        self.settings=QSettings('Storynator','Storynator');self.resize(1500,960);self.setMinimumSize(1050,700)
+        self.setWindowIcon(icon('feather','#426a45',64))
         self.recovery=Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))/'recovery.storynator'
-        self.tabs=QTabWidget(); self.tabs.setTabsClosable(True); self.tabs.tabCloseRequested.connect(self.tabs.removeTab); self.tabs.currentChanged.connect(lambda _:self.update_status())
-        self.nav=QTreeWidget(); self.nav.setHeaderLabel('PROJEKT'); self.nav.itemDoubleClicked.connect(lambda i,c:self.open_object(i.data(0,Qt.UserRole)))
-        sidebar=QWidget(); sl=QVBoxLayout(sidebar); title=QLabel('✦  STORYNATOR'); title.setStyleSheet('font-size:22px;font-weight:bold;color:#7461bb;padding:15px'); sl.addWidget(title)
-        for label,fn in [('＋ Kapitel',self.add_doc),('＋ Kategorie',self.add_category),('＋ Welt-Eintrag',self.add_entry),('＋ Ereignis / Zeitalter',self.add_event),('◷ Timeline',self.show_timeline),('⚙ Projektkalender',self.calendar)]: sl.addWidget(button(label,fn))
-        sl.addWidget(self.nav); split=QSplitter(); split.addWidget(sidebar); split.addWidget(self.tabs); split.setSizes([270,1010]); self.setCentralWidget(split)
+        self.tabs=QTabWidget();self.tabs.setTabsClosable(True);self.tabs.setDocumentMode(True);self.tabs.setMovable(True)
+        self.tabs.tabCloseRequested.connect(self.close_tab);self.tabs.currentChanged.connect(self.tab_changed)
+        self.nav=QTreeWidget();self.nav.setObjectName('projectTree');self.nav.setHeaderHidden(True);self.nav.setIndentation(14);self.nav.setAnimated(True)
+        self.nav.setRootIsDecorated(False);self.nav.itemDoubleClicked.connect(lambda i,c:self.open_object(i.data(0,Qt.UserRole)))
+        self.nav.setContextMenuPolicy(Qt.CustomContextMenu);self.nav.customContextMenuRequested.connect(self.navigation_menu)
+        sidebar=QWidget();sidebar.setObjectName('sidebar');sl=QVBoxLayout(sidebar);sl.setContentsMargins(18,26,18,20);sl.setSpacing(8)
+        brand=QHBoxLayout();mark=QLabel();mark.setPixmap(icon('feather','#b5ce9d',40).pixmap(36,36));brand.addWidget(mark);brand.addWidget(label('Storynator','title'));brand.itemAt(1).widget().setObjectName('brand');brand.addStretch();sl.addLayout(brand);sl.addSpacing(23)
+        project=QFrame();project.setObjectName('projectCard');pl=QVBoxLayout(project);pl.setContentsMargins(15,14,15,14);pl.setSpacing(5);pl.addWidget(label('AKTUELLES PROJEKT','eyebrow'));self.project_label=label(self.p['name']);self.project_label.setWordWrap(True);pl.addWidget(self.project_label);sl.addWidget(project);sl.addSpacing(22)
+        sl.addWidget(label('ARBEITSBEREICH','eyebrow'));sl.addSpacing(3);self.nav_buttons={}
+        for section,text,name in [('editor','Editor','book'),('timeline','Timeline','timeline'),('world','Welt','world')]:
+            btn=QPushButton('  '+text);btn.setObjectName('navButton');btn.setCheckable(True);btn.setIcon(icon(name,'#b8c9b4'));btn.setIconSize(QSize(21,21));btn.setCursor(Qt.PointingHandCursor);btn.clicked.connect(lambda checked=False,key=section:self.navigate(key));self.nav_buttons[section]=btn;sl.addWidget(btn)
+        sl.addSpacing(27);self.collection_label=label('MANUSKRIPT','eyebrow');sl.addWidget(self.collection_label);sl.addSpacing(4);sl.addWidget(self.nav,1)
+        self.add_primary=button('+  Neues Kapitel',self.create_in_section);self.add_primary.setProperty('role','subtle');sl.addWidget(self.add_primary)
+        self.add_secondary=button('+  Neue Kategorie',self.add_category);self.add_secondary.setProperty('role','subtle');self.add_secondary.hide();sl.addWidget(self.add_secondary);sl.addSpacing(15)
+        bottom=QHBoxLayout();bottom.addWidget(tool('settings','Projektkalender',self.calendar));bottom.addWidget(label('Projektkalender','muted'));bottom.addStretch();sl.addLayout(bottom);sl.addSpacing(8)
+        bottom=QHBoxLayout();bottom.addWidget(tool('home','Startseite',self.home));bottom.addWidget(label('Lokal. Nur für dich.','muted'));bottom.addStretch();sl.addLayout(bottom)
+        workspace=QWidget();wl=QVBoxLayout(workspace);wl.setContentsMargins(0,0,0,0);wl.setSpacing(0)
+        header=QFrame();header.setObjectName('header');hl=QHBoxLayout(header);hl.setContentsMargins(28,14,26,14);hl.setSpacing(14)
+        self.breadcrumb=label('DEIN SCHREIBATELIER','eyebrow');hl.addWidget(self.breadcrumb);hl.addStretch()
+        self.global_search=QLineEdit();self.global_search.setObjectName('globalSearch');self.global_search.setPlaceholderText('Projekt durchsuchen …');self.global_search.addAction(icon('search'),QLineEdit.LeadingPosition);self.global_search.setFixedWidth(250);self.global_search.returnPressed.connect(lambda:self.search(self.global_search.text()));hl.addWidget(self.global_search)
+        hl.addWidget(tool('print','Drucken und als PDF exportieren · Strg+P',self.printing));self.save_button=primary('Speichern',lambda:self.save(),'save');hl.addWidget(self.save_button);wl.addWidget(header)
+        self.formatbar=QFrame();self.formatbar.setObjectName('formatbar');wl.addWidget(self.formatbar);wl.addWidget(self.tabs,1)
+        split=QSplitter();split.setChildrenCollapsible(False);split.addWidget(sidebar);split.addWidget(workspace);sidebar.setMinimumWidth(235);sidebar.setMaximumWidth(330);split.setSizes([258,1242]);self.setCentralWidget(split)
         self.active_editor=None;QApplication.instance().focusChanged.connect(self.track_editor)
-        self.toolbar(); self.menus(); self.refresh(); self.home()
-        self.timer=QTimer(self); self.timer.timeout.connect(self.autosave); self.timer.start(30000)
-        if self.recovery.exists() and QMessageBox.question(self,'Wiederherstellung','Wiederherstellungssicherung öffnen?')==QMessageBox.Yes:
-            try:self.p=load_project(self.recovery); self.tabs.clear(); self.refresh(); self.changed()
+        self.toolbar();self.menus();self.refresh();self.home()
+        self.timer=QTimer(self);self.timer.timeout.connect(self.autosave);self.timer.start(30000)
+        if recover and self.recovery.exists() and QMessageBox.question(self,'Wiederherstellung','Wiederherstellungssicherung öffnen?')==QMessageBox.Yes:
+            try:self.p=load_project(self.recovery);self.tabs.clear();self.refresh();self.changed();self.open_object(self.p['documents'][0]['id']) if self.p['documents'] else self.home()
             except Exception as e:self.error(e)
+    def close_tab(self,index):
+        page=self.tabs.widget(index);self.tabs.removeTab(index)
+        if page and self.active_editor and page.isAncestorOf(self.active_editor):self.active_editor=None
+        if page:page.deleteLater()
+        if not self.tabs.count():self.home()
+    def navigation_menu(self,pos):
+        item=self.nav.itemAt(pos)
+        if not item or not item.data(0,Qt.UserRole):return
+        self.nav.setCurrentItem(item);menu=QMenu(self)
+        for text,fn in [('Öffnen',lambda:self.open_object(item.data(0,Qt.UserRole))),('Umbenennen',self.rename),('Nach oben',lambda:self.move(-1)),('Nach unten',lambda:self.move(1)),('Löschen',self.delete)]:menu.addAction(text).triggered.connect(fn)
+        menu.exec(self.nav.viewport().mapToGlobal(pos))
+    def tab_changed(self,index):
+        page=self.tabs.widget(index)
+        if page:
+            section=getattr(page,'section','editor');self.set_section(section)
+            if getattr(page,'obj',None):self.breadcrumb.setText(('MANUSKRIPT' if section=='editor' else 'DEINE WELT' if section=='world' else 'TIMELINE')+'   /   '+page.obj['name'])
+        self.update_status()
+    def set_section(self,section):
+        self.section=section
+        for key,b in self.nav_buttons.items():b.setChecked(key==section)
+        for i in range(self.nav.topLevelItemCount()):self.nav.topLevelItem(i).setHidden(i!={'editor':0,'world':1,'timeline':2}[section])
+        self.collection_label.setText({'editor':'MANUSKRIPT','world':'KATEGORIEN & EINTRÄGE','timeline':'EREIGNISSE & ZEITALTER'}[section]);self.add_primary.setText({'editor':'+  Neues Kapitel','world':'+  Neuer Eintrag','timeline':'+  Neues Ereignis'}[section]);self.add_secondary.setVisible(section=='world');self.formatbar.setVisible(section=='editor' or bool(self.current()))
+    def navigate(self,section):
+        self.set_section(section)
+        if section=='timeline':self.show_timeline()
+        elif section=='world':self.show_world()
+        else:
+            for i in range(self.tabs.count()):
+                if getattr(self.tabs.widget(i),'obj',{}) in self.p['documents']:self.tabs.setCurrentIndex(i);return
+            if self.p['documents']:self.open_object(self.p['documents'][0]['id'])
+            else:self.add_doc()
+    def create_in_section(self):
+        {'editor':self.add_doc,'world':self.add_entry,'timeline':self.add_event}[self.section]()
     def error(self,e): QMessageBox.warning(self,'Storynator',str(e))
     def changed(self): self.dirty=True; self.update_status()
     def update_status(self):
-        self.setWindowTitle(('● ' if self.dirty else '')+self.p['name']+' — Storynator'); self.statusBar().showMessage(('Ungespeichert' if self.dirty else 'Gespeichert')+'  ·  Lokal & offline  ·  @ verknüpft Einträge')
+        self.setWindowTitle(('● ' if self.dirty else '')+self.p['name']+' — Storynator')
+        if hasattr(self,'project_label'):self.project_label.setText(self.p['name'])
+        e=self.editor();words=len(e.toPlainText().split()) if e else 0
+        self.statusBar().showMessage('   '+('Ungespeicherte Änderungen' if self.dirty else 'Alle Änderungen gespeichert')+'   ·   Lokal & offline')
+        if not hasattr(self,'word_count'):
+            self.word_count=label('','muted');self.statusBar().addPermanentWidget(self.word_count)
+        self.word_count.setText((str(words)+' Wörter   ·   ' if e else '')+'Storynator   ')
     def refresh(self):
         self.nav.clear()
         for title,seq in [('Editor',self.p['documents']),('Welt',self.p['categories']),('Timeline',self.p['events'])]:
-            root=QTreeWidgetItem([title]); self.nav.addTopLevelItem(root)
+            root=QTreeWidgetItem([{'Editor':'Alle Kapitel','Welt':'Deine Kategorien','Timeline':'Alle Ereignisse'}[title]]); self.nav.addTopLevelItem(root)
             for o in seq:
-                item=QTreeWidgetItem([o['name']]); item.setData(0,Qt.UserRole,o['id']); root.addChild(item)
+                item=QTreeWidgetItem([o['name']]);item.setIcon(0,icon('file' if title=='Editor' else 'folder' if title=='Welt' else 'timeline','#9bb49a',18)); item.setData(0,Qt.UserRole,o['id']); root.addChild(item)
                 if title=='Welt':
                     for en in self.p['entries']:
                         if en['category']==o['id']:
-                            sub=QTreeWidgetItem([en['name']]);sub.setData(0,Qt.UserRole,en['id']); item.addChild(sub)
-        self.nav.expandAll(); self.update_status()
+                            sub=QTreeWidgetItem([en['name']]);sub.setIcon(0,icon('user','#9bb49a',18));sub.setData(0,Qt.UserRole,en['id']); item.addChild(sub)
+        self.nav.expandAll(); self.set_section(self.section); self.update_status()
     def menus(self):
         m=self.menuBar().addMenu('Projekt')
         for name,fn,key in [('Neu',self.new,'Ctrl+N'),('Öffnen',self.open_file,'Ctrl+O'),('Speichern',self.save,'Ctrl+S'),('Speichern unter',lambda:self.save(True),'Ctrl+Shift+S'),('Startseite',self.home,''),('Druckvorschau / PDF',self.printing,'Ctrl+P')]:
             a=m.addAction(name); a.triggered.connect(fn); a.setShortcut(key)
         m=self.menuBar().addMenu('Eintrag')
         for name,fn in [('Umbenennen',self.rename),('Löschen',self.delete),('Nach oben',lambda:self.move(-1)),('Nach unten',lambda:self.move(1))]:m.addAction(name).triggered.connect(fn)
-        search=QLineEdit(); search.setPlaceholderText('Projekt durchsuchen …'); self.menuBar().setCornerWidget(search); search.returnPressed.connect(lambda:self.search(search.text()))
+        m=self.menuBar().addMenu('Ansicht');m.addAction('Editor',lambda:self.navigate('editor'));m.addAction('Timeline',lambda:self.navigate('timeline'));m.addAction('Welt',lambda:self.navigate('world'));m.addAction('Projektkalender',self.calendar)
+        a=m.addAction('Fokusmodus');a.setShortcut('F11');a.triggered.connect(self.toggle_focus)
     def current(self):
         w=self.tabs.currentWidget(); return getattr(w,'obj',None)
     def track_editor(self,old,new):
@@ -118,12 +180,28 @@ class Main(QMainWindow):
         if e:
             f=QTextCharFormat();getattr(f,method)(value);e.mergeCurrentCharFormat(f);e.setFocus()
     def toolbar(self):
-        tb=self.addToolBar('Text'); tb.setMovable(False)
-        font=QFontComboBox(); font.currentFontChanged.connect(lambda f:self.fmt('setFontFamily',f.family()));tb.addWidget(font)
-        size=QSpinBox();size.setRange(6,96);size.setValue(12);size.valueChanged.connect(lambda v:self.fmt('setFontPointSize',v));tb.addWidget(size)
-        for text,fn in [('Fett',lambda:self.fmt('setFontWeight',QFont.Bold if self.editor() and self.editor().fontWeight()!=QFont.Bold else QFont.Normal)),('Kursiv',lambda:self.fmt('setFontItalic',not self.editor().fontItalic() if self.editor() else False)),('Unterstrichen',lambda:self.fmt('setFontUnderline',not self.editor().fontUnderline() if self.editor() else False)),('Farbe',self.color),('↶',lambda:self.editor() and self.editor().undo()),('↷',lambda:self.editor() and self.editor().redo()),('Bild',self.image),('@',lambda:self.editor() and self.editor().link()),('Seitenumbruch',self.pagebreak)]:tb.addAction(text).triggered.connect(fn)
-        tb.addSeparator(); style=QComboBox();style.addItems(['Absatz','Überschrift 1','Überschrift 2','Aufzählung','Nummeriert']);style.activated.connect(self.paragraph);tb.addWidget(style)
-        for text,align in [('Links',Qt.AlignLeft),('Mitte',Qt.AlignHCenter),('Rechts',Qt.AlignRight),('Blocksatz',Qt.AlignJustify)]:tb.addAction(text).triggered.connect(lambda checked=False,a=align:self.editor() and self.editor().setAlignment(a))
+        bar=QHBoxLayout(self.formatbar);bar.setContentsMargins(24,9,24,9);bar.setSpacing(4)
+        def sep():
+            f=QFrame();f.setFrameShape(QFrame.VLine);f.setStyleSheet('color:#dce3d6;');bar.addSpacing(8);bar.addWidget(f);bar.addSpacing(8)
+        style=QComboBox();style.addItems(['Absatz','Überschrift 1','Überschrift 2','Aufzählung','Nummeriert']);style.setFixedWidth(145);style.activated.connect(self.paragraph);bar.addWidget(style);sep()
+        font=QFontComboBox();font.setCurrentFont(QFont('Georgia'));font.setFixedWidth(142);font.currentFontChanged.connect(lambda f:self.fmt('setFontFamilies',[f.family()]));bar.addWidget(font)
+        size=QSpinBox();size.setRange(6,96);size.setValue(14);size.setFixedWidth(65);size.valueChanged.connect(lambda v:self.fmt('setFontPointSize',v));bar.addWidget(size);sep()
+        for text,tip,method,value in [('B','Fett','setFontWeight',None),('I','Kursiv','setFontItalic',None),('U','Unterstrichen','setFontUnderline',None)]:
+            b=QToolButton();b.setText(text);b.setToolTip(tip);b.setFocusPolicy(Qt.NoFocus);f=QFont('Georgia',12);f.setBold(text=='B');f.setItalic(text=='I');f.setUnderline(text=='U');b.setFont(f)
+            def toggle(checked=False,t=text):
+                e=self.editor()
+                if e:self.fmt('setFontWeight',QFont.Normal if e.fontWeight()==QFont.Bold else QFont.Bold) if t=='B' else self.fmt('setFontItalic',not e.fontItalic()) if t=='I' else self.fmt('setFontUnderline',not e.fontUnderline())
+            b.clicked.connect(toggle);bar.addWidget(b)
+        b=QToolButton();b.setText('A');b.setToolTip('Textfarbe');b.setFocusPolicy(Qt.NoFocus);b.clicked.connect(self.color);bar.addWidget(b);sep()
+        for name,align,tip in [('left',Qt.AlignLeft,'Linksbündig'),('center',Qt.AlignHCenter,'Zentriert'),('right',Qt.AlignRight,'Rechtsbündig'),('justify',Qt.AlignJustify,'Blocksatz')]:bar.addWidget(tool(name,tip,lambda checked=False,a=align:self.editor() and self.editor().setAlignment(a)))
+        sep();bar.addWidget(tool('image','Bild einfügen',self.image));bar.addWidget(tool('link','Eintrag verknüpfen · @',lambda:self.editor() and self.editor().link()));bar.addWidget(tool('break','Seitenumbruch einfügen',self.pagebreak));bar.addStretch()
+        bar.addWidget(tool('undo','Rückgängig · Strg+Z',lambda:self.editor() and self.editor().undo()));bar.addWidget(tool('redo','Wiederholen · Strg+Y',lambda:self.editor() and self.editor().redo()));bar.addWidget(tool('focus','Fokusmodus · F11',self.toggle_focus))
+    def toggle_focus(self):
+        sidebar=self.centralWidget().widget(0);visible=not sidebar.isVisible();sidebar.setVisible(visible)
+        page=self.tabs.currentWidget()
+        if page:
+            context=page.findChild(QFrame,'context')
+            if context:context.setVisible(visible)
     def color(self):
         c=QColorDialog.getColor(parent=self)
         if c.isValid():self.fmt('setForeground',c)
@@ -146,9 +224,41 @@ class Main(QMainWindow):
         if e:
             cur=e.textCursor();cur.insertBlock();f=cur.blockFormat();f.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore);cur.setBlockFormat(f)
     def home(self):
-        page=QWidget();l=QVBoxLayout(page);l.addWidget(QLabel('<h1>Deine nächste Welt beginnt hier.</h1><p>Schreiben. Zusammenhänge entdecken. Geschichten bewahren.</p>'));l.addWidget(button('Neues Projekt',self.new));l.addWidget(button('Projekt öffnen',self.open_file))
-        for path in self.settings.value('recent',[],type=list):l.addWidget(button(str(path),lambda checked=False,p=path:self.open_file(p)))
-        l.addStretch(); self.tabs.addTab(page,'Start');self.tabs.setCurrentWidget(page)
+        for i in range(self.tabs.count()):
+            if getattr(self.tabs.widget(i),'home_page',False):self.tabs.setCurrentIndex(i);return
+        page=QWidget();page.home_page=True;page.section='editor';outer=QVBoxLayout(page);outer.setContentsMargins(45,34,45,35);outer.setSpacing(24)
+        intro=QHBoxLayout();intro.addWidget(label('DEIN PERSÖNLICHES SCHREIBATELIER','eyebrow'));intro.addStretch();intro.addWidget(label('Offline. Unabhängig. Dein.','muted'));outer.addLayout(intro)
+        hero=QFrame();hero.setObjectName('hero');h=QHBoxLayout(hero);h.setContentsMargins(42,38,38,38);text=QVBoxLayout();text.setSpacing(18);text.addWidget(label('Raum für deine\nnächste große Geschichte.','serif'));subtitle=label('Ein Ort für deine Worte, deine Figuren und die Welt dazwischen.');subtitle.setWordWrap(True);text.addWidget(subtitle)
+        actions=QHBoxLayout();actions.addWidget(primary('Neues Projekt',self.new,'plus'));actions.addWidget(button('Projekt öffnen',self.open_file));actions.addStretch();text.addLayout(actions);h.addLayout(text,1)
+        art=QLabel();art.setPixmap(icon('feather','#668458',180).pixmap(180,180));h.addWidget(art);outer.addWidget(hero)
+        outer.addWidget(label('ZULETZT GEÖFFNET','eyebrow'));recent=self.settings.value('recent',[],type=list)
+        valid=[path for path in recent if Path(path).exists()]
+        if not valid:
+            card=QFrame();card.setObjectName('card');cl=QHBoxLayout(card);cl.setContentsMargins(22,20,22,20);cl.addWidget(label('Deine Geschichten warten auf dich.'));cl.addStretch();cl.addWidget(button('Beispiel entdecken',self.open_example));outer.addWidget(card)
+        for path in valid[:3]:
+            card=QFrame();card.setObjectName('card');cl=QHBoxLayout(card);cl.setContentsMargins(22,17,22,17);mark=QLabel();mark.setPixmap(icon('book','#617f50',30).pixmap(30,30));cl.addWidget(mark);cl.addSpacing(12);details=QVBoxLayout();details.addWidget(label(Path(path).stem));details.addWidget(label(str(Path(path).parent),'muted'));cl.addLayout(details);cl.addStretch();cl.addWidget(tool('arrow','Projekt öffnen',lambda checked=False,p=path:self.open_file(p)));outer.addWidget(card)
+        outer.addStretch();foot=QHBoxLayout()
+        for name,title,desc in [('book','Schreibe deine Geschichte','Ein ruhiger Platz für jedes Kapitel.'),('world','Erschaffe deine Welt','Figuren, Orte und ihre Verbindungen.'),('timeline','Verbinde die Ereignisse','Dein Kalender. Deine Geschichte.')]:
+            box=QVBoxLayout();row=QHBoxLayout();im=QLabel();im.setPixmap(icon(name,'#6f8b60',23).pixmap(23,23));row.addWidget(im);row.addWidget(label(title));row.addStretch();box.addLayout(row);box.addWidget(label(desc,'muted'));foot.addLayout(box)
+        outer.addLayout(foot);self.tabs.addTab(page,'Willkommen');self.tabs.setCurrentWidget(page);self.breadcrumb.setText('DEIN SCHREIBATELIER');self.formatbar.hide()
+    def open_example(self):
+        path=Path(getattr(sys,'_MEIPASS',Path(__file__).parent))/'Beispiel.storynator'
+        if path.exists():self.open_file(str(path));self.path=None;self.changed()
+        else:self.error('Beispielprojekt nicht gefunden.')
+    def show_world(self):
+        for i in range(self.tabs.count()):
+            if getattr(self.tabs.widget(i),'world_page',False):self.tabs.removeTab(i);break
+        page=QWidget();page.world_page=True;page.section='world';l=QVBoxLayout(page);l.setContentsMargins(36,30,36,30);l.setSpacing(20)
+        row=QHBoxLayout();col=QVBoxLayout();col.addWidget(label('WELTENBAU','eyebrow'));col.addWidget(label('Eine Welt voller Möglichkeiten.','title'));col.addWidget(label('Alles, was deine Geschichte lebendig macht.'));row.addLayout(col);row.addStretch();row.addWidget(primary('Neuer Eintrag',self.add_entry,'plus'));l.addLayout(row)
+        scroll=QScrollArea();scroll.setWidgetResizable(True);inner=QWidget();grid=QGridLayout(inner);grid.setContentsMargins(0,0,0,0);grid.setSpacing(18)
+        for index,cat in enumerate(self.p['categories']):
+            card=QFrame();card.setObjectName('card');cl=QVBoxLayout(card);cl.setContentsMargins(24,22,24,22);cl.setSpacing(13);entries=[e for e in self.p['entries'] if e['category']==cat['id']];r=QHBoxLayout();r.addWidget(label(cat['name'],'title'));r.addStretch();r.addWidget(tool('settings','Kategorievorlage bearbeiten',lambda checked=False,c=cat:self.template(c)));cl.addLayout(r);cl.addWidget(label(str(len(entries))+' Einträge · '+str(len(cat['fields']))+' eigene Felder','muted'))
+            for en in entries[:5]:
+                b=button(en['name']+'    →',lambda checked=False,id=en['id']:self.open_object(id));b.setProperty('role','subtle');cl.addWidget(b)
+            if not entries:cl.addWidget(label('Hier beginnt ein neuer Teil deiner Welt.','muted'))
+            cl.addStretch();grid.addWidget(card,index//2,index%2)
+        if not self.p['categories']:grid.addWidget(label('Lege deine erste Kategorie an – zum Beispiel Charaktere, Orte oder Länder.'),0,0)
+        grid.setRowStretch((len(self.p['categories'])+1)//2,1);scroll.setWidget(inner);l.addWidget(scroll,1);l.addWidget(button('+ Eigene Kategorie anlegen',self.add_category));self.tabs.addTab(page,'Deine Welt');self.tabs.setCurrentWidget(page);self.breadcrumb.setText('DEINE WELT')
     def guard(self):
         if not self.dirty:return True
         r=QMessageBox.question(self,'Ungespeicherte Änderungen','Änderungen speichern?',QMessageBox.Save|QMessageBox.Discard|QMessageBox.Cancel)
@@ -251,17 +361,33 @@ class Main(QMainWindow):
         if not o:self.error('Dieser Eintrag wurde gelöscht.');return
         for i in range(self.tabs.count()):
             if getattr(self.tabs.widget(i),'obj',{}).get('id')==id:self.tabs.setCurrentIndex(i);return
-        page=QWidget();page.obj=o;l=QVBoxLayout(page);heading=QLabel(o['name']);heading.setObjectName('entryHeading');heading.setStyleSheet('font-size:24px;padding:12px');l.addWidget(heading)
-        if o in self.p['documents']:l.addWidget(Rich(self,o))
+        page=QWidget();page.obj=o;page.section='editor' if o in self.p['documents'] else 'timeline' if o in self.p['events'] else 'world'
+        l=QVBoxLayout(page);l.setContentsMargins(0,0,0,0);l.setSpacing(0)
+        if o in self.p['documents']:
+            body=QHBoxLayout();body.setContentsMargins(25,24,0,18);body.setSpacing(25)
+            canvas=QWidget();canvas_l=QVBoxLayout(canvas);canvas_l.setContentsMargins(0,0,0,0);canvas_l.setSpacing(13)
+            meta=QHBoxLayout();meta.addWidget(label('MANUSKRIPT  /  '+str(self.p['documents'].index(o)+1).zfill(2),'eyebrow'));meta.addStretch();meta.addWidget(label('Deine Worte haben Raum.','muted'));canvas_l.addLayout(meta)
+            paper=QFrame();paper.setObjectName('paper');paper.setMaximumWidth(880);paper_l=QVBoxLayout(paper);paper_l.setContentsMargins(65,40,65,24);paper_l.setSpacing(17)
+            heading=label(o['name'],'title');heading.setObjectName('entryHeading');heading.setFont(QFont('Georgia',23));paper_l.addWidget(heading)
+            e=Rich(self,o);e.setObjectName('manuscript');e.setFont(QFont('Georgia',14));e.document().setDocumentMargin(0);e.setPlaceholderText('Jede Geschichte beginnt mit einem ersten Satz …');paper_l.addWidget(e,1);shadow(paper)
+            centered=QHBoxLayout();centered.addStretch(1);centered.addWidget(paper,12);centered.addStretch(1);canvas_l.addLayout(centered,1);body.addWidget(canvas,1)
+            context=QFrame();context.setObjectName('context');context.setFixedWidth(225);cx=QVBoxLayout(context);cx.setContentsMargins(0,2,22,18);cx.setSpacing(15);cx.addWidget(label('DEINE GESCHICHTE','eyebrow'));cx.addSpacing(5);cx.addWidget(label('Alles ist verbunden.'));hint=label('Verknüpfe beim Schreiben deine Figuren, Orte und Ereignisse.','muted');hint.setWordWrap(True);cx.addWidget(hint)
+            chip=button('@  Eintrag verknüpfen',e.link);chip.setProperty('role','chip');cx.addWidget(chip);cx.addSpacing(15);cx.addWidget(label('AUS DEINER WELT','eyebrow'))
+            for en in self.p['entries'][:6]:
+                b=button(en['name']+'   ↗',lambda checked=False,id=en['id']:self.open_object(id));b.setProperty('role','subtle');cx.addWidget(b)
+            if not self.p['entries']:cx.addWidget(label('Noch keine Einträge.','muted'))
+            cx.addWidget(button('Welt entdecken',self.show_world));cx.addStretch();cx.addWidget(label('DEIN SCHREIBMOMENT','eyebrow'));tip=label('Blende mit F11 alles aus, was dich vom Schreiben ablenkt.','muted');tip.setWordWrap(True);cx.addWidget(tip);body.addWidget(context);l.addLayout(body,1)
         else:
-            scroll=QScrollArea();scroll.setWidgetResizable(True);inner=QWidget();form=QFormLayout(inner);scroll.setWidget(inner);l.addWidget(scroll)
-            desc=Rich(self,o);desc.setMinimumHeight(200);form.addRow('Beschreibung',desc)
+            scroll=QScrollArea();scroll.setWidgetResizable(True);container=QWidget();outer=QVBoxLayout(container);outer.setContentsMargins(40,32,40,32);outer.setSpacing(20)
+            outer.addWidget(label('WELTENBAU' if page.section=='world' else 'TIMELINE','eyebrow'));heading=label(o['name'],'title');heading.setObjectName('entryHeading');outer.addWidget(heading)
+            card=QFrame();card.setObjectName('card');form=QFormLayout(card);form.setContentsMargins(28,26,28,26);form.setVerticalSpacing(22);form.setHorizontalSpacing(24);form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow);form.setLabelAlignment(Qt.AlignLeft|Qt.AlignVCenter)
+            desc=Rich(self,o);desc.setObjectName('fieldEditor');desc.setMinimumHeight(190);form.addRow('Beschreibung',desc)
             if o in self.p['events']:
                 form.addRow('Zeitliche Zuordnung',QLabel(o['start']+(' bis '+o['end'] if o['end'] else '')+' · '+o['kind']));form.addRow(button('Zeit ändern',lambda:self.edit_time(o,page)))
             else:
-                cat=next(c for c in self.p['categories'] if c['id']==o['category']); form.addRow(button('Kategorievorlage bearbeiten',lambda:self.template(cat)))
+                cat=next(c for c in self.p['categories'] if c['id']==o['category']);form.addRow(button('Kategorievorlage bearbeiten',lambda:self.template(cat)))
                 for f in cat['fields']:form.addRow(f['name'],self.field(o,f))
-            form.addRow('Verknüpfungen',self.link_field(o,'links'))
+            form.addRow('Verknüpfungen',self.link_field(o,'links'));outer.addWidget(card);outer.addStretch();scroll.setWidget(container);l.addWidget(scroll)
         self.tabs.addTab(page,o['name']);self.tabs.setCurrentWidget(page)
     def edit_time(self,o,page):
         if self.time_dialog(o):self.tabs.removeTab(self.tabs.indexOf(page));self.open_object(o['id']);self.changed();self.refresh()
@@ -451,26 +577,31 @@ class Main(QMainWindow):
         o=dict(id=uid(),html='',links=[])
         if self.time_dialog(o):self.p['events'].append(o);self.changed();self.refresh();self.open_object(o['id'])
     def show_timeline(self):
-        cal=Calendar(self.p['calendar']);page=QWidget();l=QVBoxLayout(page);l.addWidget(QLabel('<h2>Timeline</h2>Überlappungen bleiben in eigenen Spuren · Strg + Mausrad zoomt'))
-        scene=QGraphicsScene();view=TimelineView(scene);view.setDragMode(QGraphicsView.ScrollHandDrag);l.addWidget(view,2);table=QTableWidget(0,4);table.setHorizontalHeaderLabels(['Name','Art','Anfang','Ende']);table.horizontalHeader().setStretchLastSection(True);l.addWidget(table,1)
+        for i in range(self.tabs.count()):
+            if getattr(self.tabs.widget(i),'timeline_page',False):self.tabs.removeTab(i);break
+        cal=Calendar(self.p['calendar']);page=QWidget();page.section='timeline';page.timeline_page=True;l=QVBoxLayout(page);l.setContentsMargins(32,28,32,24);l.setSpacing(20)
+        row=QHBoxLayout();col=QVBoxLayout();col.setSpacing(8);col.addWidget(label('ZEIT & ZUSAMMENHÄNGE','eyebrow'));col.addWidget(label('Jede Geschichte hinterlässt Spuren.','title'));col.addWidget(label(self.p['calendar']['name']+' · Ereignisse, Zeitalter und die Verbindungen dazwischen.'));row.addLayout(col);row.addStretch();row.addWidget(primary('Ereignis anlegen',self.add_event,'plus'));l.addLayout(row)
+        card=QFrame();card.setObjectName('card');cl=QVBoxLayout(card);cl.setContentsMargins(20,14,20,20);tools=QHBoxLayout();tools.addWidget(label('ZEITSTRAHL','eyebrow'));tools.addStretch();tools.addWidget(label('Strg + Mausrad zum Zoomen','muted'));cl.addLayout(tools)
+        scene=QGraphicsScene();scene.setBackgroundBrush(QColor('#fffefa'));view=TimelineView(scene);view.setStyleSheet('border:0;background:#fffefa;');view.setDragMode(QGraphicsView.ScrollHandDrag);view.setMinimumHeight(240);cl.addWidget(view,1);l.addWidget(card,3)
+        table=QTableWidget(0,4);table.setHorizontalHeaderLabels(['Ereignis / Zeitalter','Art','Anfang','Ende']);table.horizontalHeader().setSectionResizeMode(0,QHeaderView.Stretch);table.horizontalHeader().setSectionResizeMode(1,QHeaderView.ResizeToContents);table.horizontalHeader().setSectionResizeMode(2,QHeaderView.ResizeToContents);table.horizontalHeader().setSectionResizeMode(3,QHeaderView.ResizeToContents);table.verticalHeader().hide();table.setShowGrid(False);table.setSelectionBehavior(QAbstractItemView.SelectRows);table.setEditTriggers(QAbstractItemView.NoEditTriggers);l.addWidget(table,2)
         def draw():
             try:
-                scene.clear();table.setRowCount(0);events=sorted(self.p['events'],key=lambda e:cal.ordinal(e['start']));spans=[cal.span(e['start'],e['end']) for e in events]
-                lo=min((a for a,b in spans),default=0);hi=max((b for a,b in spans),default=1);factor=900/max(1,hi-lo)
-                unit='Jahre' if not self.p['calendar']['months'] else 'Tage'
-                scene.addText('Zeitachse · '+unit+' relativ zum Kalenderursprung').setPos(160,-50)
-                scene.addLine(160,0,1060,0,QColor('#7461bb'))
+                scene.clear();table.setRowCount(0);events=sorted(self.p['events'],key=lambda e:cal.ordinal(e['start']));spans=[cal.span(e['start'],e['end']) for e in events];lo=min((a for a,b in spans),default=0);hi=max((b for a,b in spans),default=1);factor=760/max(1,hi-lo)
+                unit='Jahre' if not self.p['calendar']['months'] else 'Tage';axis=scene.addText(unit+' seit dem Kalenderursprung');axis.setDefaultTextColor(QColor('#8c9b85'));axis.setPos(220,-67)
                 for tick in range(6):
-                    x=160+tick*180;scene.addLine(x,-5,x,5,QColor('#7461bb'));scene.addText(str(round(lo+(hi-lo)*tick/5))).setPos(x,-30)
+                    x=220+tick*152;scene.addLine(x,-10,x,max(60,len(events)*56),QColor('#e7ecdf'));t=scene.addText(str(round(lo+(hi-lo)*tick/5)));t.setDefaultTextColor(QColor('#8c9b85'));t.setPos(x-4,-36)
                 for row,(en,(a,b)) in enumerate(zip(events,spans)):
-                    y=30+row*48; x=160+(a-lo)*factor;width=max(10,(b-a)*factor)
-                    scene.addLine(160,y+35,1100,y+35,QColor('#dddddd'));label=scene.addText(en['name']);label.setPos(0,y)
-                    rect=scene.addRect(x,y,width,24,QColor('#7461bb'),QColor('#bcb0df') if en['kind']=='Zeitalter' else QColor('#7461bb'));rect.setFlag(QGraphicsItem.ItemIsSelectable);rect.setData(0,en['id']);rect.setToolTip(en['name']+' · '+cal.display(en['start'])+(' – '+cal.display(en['end']) if en['end'] else ''))
-                    table.insertRow(row)
-                    for col,text in enumerate([en['name'],en['kind'],cal.display(en['start']),cal.display(en['end']) if en['end'] else '']):i=QTableWidgetItem(text);i.setData(Qt.UserRole,en['id']);table.setItem(row,col,i)
-                scene.setSceneRect(scene.itemsBoundingRect().adjusted(-10,-10,40,40))
+                    y=18+row*56;x=220+(a-lo)*factor;width=max(13,(b-a)*factor);name=scene.addText(en['name']);name.setDefaultTextColor(QColor('#40583c'));name.setPos(0,y-3)
+                    date=scene.addText(cal.display(en['start']));date.setDefaultTextColor(QColor('#8c9b85'));date.setFont(QFont('Segoe UI',8));date.setPos(0,y+18)
+                    color=QColor('#b7c79a') if en['kind']=='Zeitalter' else QColor('#5c8051');rect=scene.addRect(x,y,width,26,Qt.NoPen,color) if en['end'] else scene.addEllipse(x-6,y+5,15,15,Qt.NoPen,color);rect.setFlag(QGraphicsItem.ItemIsSelectable);rect.setData(0,en['id']);rect.setCursor(Qt.PointingHandCursor);rect.setToolTip(en['name']+' · '+cal.display(en['start'])+(' – '+cal.display(en['end']) if en['end'] else ''))
+                    table.insertRow(row);table.setRowHeight(row,43)
+                    for col,text in enumerate([en['name'],en['kind'],cal.display(en['start']),cal.display(en['end']) if en['end'] else '—']):i=QTableWidgetItem(text);i.setData(Qt.UserRole,en['id']);table.setItem(row,col,i)
+                if not events:
+                    text=scene.addText('Die Geschichte deiner Welt beginnt mit dem ersten Ereignis.');text.setDefaultTextColor(QColor('#87977c'));text.setPos(0,20)
+                scene.setSceneRect(scene.itemsBoundingRect().adjusted(-10,-10,25,25))
             except Exception as e:self.error(e)
-        scene.selectionChanged.connect(lambda:[self.open_object(i.data(0)) for i in scene.selectedItems() if i.data(0)]);table.itemDoubleClicked.connect(lambda i:self.open_object(i.data(Qt.UserRole)));l.addWidget(button('Aktualisieren',draw));draw();self.tabs.addTab(page,'Timeline');self.tabs.setCurrentWidget(page)
+        scene.selectionChanged.connect(lambda:[self.open_object(i.data(0)) for i in scene.selectedItems() if i.data(0)]);table.itemDoubleClicked.connect(lambda i:self.open_object(i.data(Qt.UserRole)))
+        tools.addWidget(tool('plus','Vergrößern',lambda:view.scale(1.2,1.2)));zoom=QToolButton();zoom.setText('−');zoom.setToolTip('Verkleinern');zoom.clicked.connect(lambda:view.scale(1/1.2,1/1.2));tools.addWidget(zoom);tools.addWidget(button('Aktualisieren',draw));draw();self.tabs.addTab(page,'Timeline');self.tabs.setCurrentWidget(page);self.breadcrumb.setText('TIMELINE')
     def export_document(self,docs):
         doc=QTextDocument();doc.setDefaultFont(QFont('Georgia',12))
         for k,v in self.p['assets'].items():doc.addResource(QTextDocument.ImageResource,QUrl('asset:'+k),QImage.fromData(base64.b64decode(v)))
@@ -511,7 +642,21 @@ class Main(QMainWindow):
 from PySide6.QtCore import QStandardPaths
 
 def main():
-    app=QApplication(sys.argv);app.setApplicationName('Storynator');app.setStyle('Fusion')
-    app.setStyleSheet('QMainWindow,QDialog{background:#f5f3f9;color:#292638} QTreeWidget,QListWidget,QTextEdit,QPlainTextEdit,QTableWidget{background:white;border:1px solid #e1ddeb;border-radius:5px;} QPushButton{padding:8px 12px;border:1px solid #ddd6e9;border-radius:5px;background:#fff;color:#423951} QPushButton:hover{background:#e7e0f4;} QTabBar::tab{padding:10px 20px;} QTabBar::tab:selected{background:white;color:#7461bb;} QToolBar{padding:5px;spacing:5px;background:#fff;} QLineEdit,QComboBox,QSpinBox{padding:5px;}')
-    w=Main();w.show();sys.exit(app.exec())
+    app=QApplication(sys.argv);app.setApplicationName('Storynator');app.setOrganizationName('Storynator');apply_theme(app)
+    smoke='--smoke-test' in sys.argv;w=Main(recover=not smoke);w.show()
+    if smoke:
+        def check():
+            try:
+                import tempfile
+                w.p=load_project(Path(getattr(sys,'_MEIPASS',Path(__file__).parent))/'Beispiel.storynator');w.tabs.clear();w.refresh();w.open_object(w.p['documents'][0]['id']);w.show_timeline()
+                with tempfile.TemporaryDirectory() as folder:
+                    path=Path(folder)/'smoke.storynator';save_project(w.p,path);assert load_project(path)==w.p
+                    pdf=Path(folder)/'smoke.pdf';printer=QPrinter();printer.setOutputFormat(QPrinter.PdfFormat);printer.setOutputFileName(str(pdf));w.export_document(w.p['documents']).print_(printer);assert pdf.stat().st_size>500
+                w.dirty=False;app.exit(0)
+            except Exception:
+                import traceback
+                Path(os.environ.get('STORYNATOR_SMOKE_LOG','smoke-error.txt')).write_text(traceback.format_exc(),encoding='utf-8');app.exit(1)
+        QTimer.singleShot(400,check)
+    elif len(sys.argv)>1 and Path(sys.argv[1]).suffix=='.storynator':w.open_file(sys.argv[1])
+    sys.exit(app.exec())
 if __name__=='__main__':main()

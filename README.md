@@ -2,15 +2,25 @@
 
 Eine lokal laufende Desktop-Anwendung zum Schreiben und zur Verwaltung einer Geschichtenwelt. Native Qt-Oberfläche mit Python/PySide6, ohne Webserver, Konten, Telemetrie oder Laufzeit-Netzwerkzugriffe.
 
-## Start unter Windows
+## Direkt starten – Windows
 
-1. Python 3.11 oder neuer (64 Bit) installieren, einschließlich Python Launcher.
-2. `Installieren.bat` ausführen. Die einmalige Installation lädt Qt von PyPI herunter.
-3. `Start-Storynator.bat` starten. Danach funktioniert die Anwendung offline.
+**[Storynator.exe herunterladen](https://github.com/Burigames/storynator/releases/latest/download/Storynator.exe)**
 
-Optional `Windows-EXE-bauen.bat` auf Windows ausführen. Das erzeugt `dist/Storynator/Storynator.exe`. **Den gesamten Ordner** weitergeben, nicht nur die EXE. Dieser Ordner braucht weder Python noch Internet. Ein Windows-Binärpaket wurde in dieser Linux-Umgebung nicht gebaut oder geprüft.
+Die EXE herunterladen und doppelklicken. Kein Python, kein Installationsskript, kein Entpacken und keine Paketinstallation. Alle benötigten Laufzeitbibliotheken und ein Beispielprojekt sind in der einzelnen Datei enthalten. Unterstützt wird Windows 10/11 x64. Der erste Start kann durch das interne Entpacken der Bibliotheken etwas länger dauern.
 
-Auf Linux/macOS: `python -m venv .venv`, Umgebung aktivieren, `python -m pip install -r requirements.txt`, `python app.py`. Linux benötigt die üblichen Qt-Systembibliotheken für die grafische Sitzung.
+Die Releases werden automatisch auf einem Windows-Runner gebaut. Vor der Veröffentlichung laufen die Integrationstests und ein Start-, Projektdatei- und PDF-Test **der gebauten EXE**. Auf der [Releases-Seite](https://github.com/Burigames/storynator/releases) stehen die veröffentlichten Windows-Versionen; „Code → Download ZIP“ liefert dagegen den Quellcode für Entwickler.
+
+### Für Entwickler
+
+Quellcode: Python 3.11 oder neuer. `python -m venv .venv`, Umgebung aktivieren, `python -m pip install -r requirements.txt`, `python app.py`. Unter Windows stehen außerdem `Installieren.bat` und `Start-Storynator.bat` als Entwicklerhilfen bereit. Endnutzer benötigen diese Dateien nicht.
+
+Der native Windows-Build erfolgt mit `python scripts/build_windows.py` nach Installation von `requirements-dev.txt`. Alternativ `Windows-EXE-bauen.bat`. Ergebnis: eine einzelne `dist/Storynator.exe`. Der Workflow `.github/workflows/windows.yml` baut, testet und veröffentlicht diese Datei.
+
+## Das neue Schreibatelier
+
+Dunkelgrüne Navigation, warme Papierfläche, zurückhaltende Symbolleiste und viel Raum für den Text. Editor, Timeline und Welt sind klar getrennte Arbeitsbereiche. Die Weltübersicht zeigt Kategorien als Karten; die Timeline stellt überlappende Zeiträume in getrennten Spuren dar. Die rechte Schreibhilfe öffnet Welt-Einträge, ohne das Kapitel zu schließen. Mit F11 lassen sich Navigation und Schreibhilfe für konzentriertes Schreiben ausblenden. Die Oberfläche folgt einem gemeinsamen Design in `design.py`, einschließlich Vektorsymbolen, Abständen, Farben und Dialogen.
+
+![Storynator Schreibatelier](Vorschau.png)
 
 ## Erste Schritte
 
@@ -39,6 +49,8 @@ Alle 30 Sekunden gibt es bei Änderungen eine lokale Wiederherstellungskopie im 
 ## Technischer Aufbau
 
 - `core.py`: Projektmodell, versionierter ZIP-Container, atomarer Austausch, eingebettete Ressourcen, UUID-Auflösung, Rückverweise, Kalenderarithmetik.
+- `design.py`: gemeinsames Gestaltungssystem und skalierbare Vektorsymbole.
+- `scripts/build_windows.py`: einzelnes Windows-EXE-Paket; `.github/workflows/windows.yml`: Tests, Build, EXE-Prüfung und Release.
 - `app.py`: Qt-Oberfläche, Richtexteditor, Kategorievorlagen und Felder, projektweite Suche, Tabs, Timeline, Kalenderdialog, Drucken/PDF.
 - `test_storynator.py`: Integrationstests mit echtem Qt-Editor, Dateiarchiv und echtem PDF-Export.
 
@@ -54,7 +66,7 @@ Geprüft wurden die Kategorienfelder Text/Bild/Dropdown/Slider, Charakter-Land-V
 
 Dies ist eine funktionierende erste Desktop-Version, keine vollständig ausgereifte Word-Alternative.
 
-- Windows-Start, EXE-Erzeugung und physischer Druck müssen noch auf Windows geprüft werden; hier wurden Qt und PDF unter Linux ohne Bildschirm getestet.
+- Windows-Start und EXE-Erzeugung werden im Release-Workflow geprüft. Physischer Druck auf realen Geräten sowie ein ausführlicher manueller Windows-Test stehen weiterhin aus.
 - Kalender unterstützen frei benannte Jahre, beliebig viele Monate mit individueller Länge, Tage und optionale Wochen sowie reine Jahreszählung. Beliebige zusätzliche Hierarchiestufen (etwa Stunden oder mehrere verschachtelte Unterjahreseinheiten) sind noch nicht umgesetzt.
 - Schaltregeln sind positive periodische Tageszusätze; Ausnahmeregeln wie „alle 100 Jahre nicht, außer alle 400“ haben noch keine eigene Darstellung. Der Ursprung liegt am ersten Tag des Ausgangsjahrs.
 - Datumsfelder haben Texteingabe mit Validierung statt eines grafischen Datumspickers. Monatssortierung erfolgt über die Tabellenreihenfolge; die Monate werden von oben nach unten angelegt.

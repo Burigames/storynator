@@ -1,0 +1,55 @@
+name: Windows EXE
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: storynator-windows
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Build and test Windows executable
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run integration tests on Windows
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+      - name: Build self-contained EXE
+        run: python scripts/build_windows.py
+      - name: Test packaged application
+        env:
+          QT_QPA_PLATFORM: offscreen
+          STORYNATOR_SMOKE_LOG: smoke-error.txt
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath "$pwd/dist/Storynator.exe" -ArgumentList '--smoke-test' -PassThru
+          if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'EXE startup timed out' }
+          if ($process.ExitCode -ne 0) {
+            if (Test-Path smoke-error.txt) { Get-Content smoke-error.txt }
+            throw "EXE smoke test failed: $($process.ExitCode)"
+          }
+      - name: Publish downloadable executable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $tag = "v0.2.$env:GITHUB_RUN_NUMBER"
+          $notes = "Storynator mit neuem Schreibatelier-Design. Storynator.exe herunterladen und direkt starten. Keine Installation, kein Python, kein Internet fuer den Betrieb erforderlich. Windows x64. Enthalten: Editor, Welt, Timeline, Projektkalender und PDF-Export. Integrationstests und Starttest der gebauten EXE sind auf Windows bestanden."
+          gh release create $tag dist/Storynator.exe --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Storynator-Windows-x64
+          path: dist/Storynator.exe
+          retention-days: 14
