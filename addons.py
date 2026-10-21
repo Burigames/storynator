@@ -46,8 +46,11 @@ def validate(spec):
         if not isinstance(fields,list) or len(fields)>100:raise ValueError('Zu viele oder ungültige Felder.')
         for f in fields:
             if not isinstance(f,dict) or set(f)-{'name','type','options','min','max','step','source_category'}:raise ValueError('Ungültiges Feld. Inhalte und Code sind nicht erlaubt.')
-            if not isinstance(f.get('name'),str) or not f['name'].strip() or f.get('type') not in FIELD_TYPES:raise ValueError('Unbekannter Feldtyp oder fehlender Name.')
+            if not isinstance(f.get('name'),str) or not f['name'].strip() or not isinstance(f.get('type'),str) or f.get('type') not in FIELD_TYPES:raise ValueError('Unbekannter Feldtyp oder fehlender Name.')
             if 'options' in f and (not isinstance(f['options'],list) or any(not isinstance(o,str) for o in f['options'])):raise ValueError('Auswahloptionen müssen Texte sein.')
+            if 'source_category' in f and not isinstance(f['source_category'],str):raise ValueError('Ungültige Quellkategorie.')
+            for number in ['min','max','step']:
+                if number in f and (not isinstance(f[number],(int,float)) or isinstance(f[number],bool) or not math.isfinite(f[number]) or abs(f[number])>1e9):raise ValueError('Ungültige numerische Feldeinstellung.')
             if f['type']=='Slider':
                 try:valid=all(isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) for v in [f.get('min',0),f.get('max',100),f.get('step',1)]) and -1e9<=f.get('min',0)<=f.get('max',100)<=1e9 and f.get('step',1)>0
                 except TypeError:valid=False

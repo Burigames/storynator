@@ -822,6 +822,6 @@ def main():
             def import_preset():
                 manager=AddonManager(w);manager.import_file(sys.argv[index+1]);manager.exec()
             QTimer.singleShot(0,import_preset)
-    elif len(sys.argv)>1 and Path(sys.argv[1]).suffix=='.storynator':w.open_file(sys.argv[1])
+    elif len(sys.argv)>1 and Path(sys.argv[1]).suffix.lower()=='.storynator':w.open_file(sys.argv[1])
     sys.exit(app.exec())
 if __name__=='__main__':main()
