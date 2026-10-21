@@ -46,7 +46,7 @@ def render(p,text):
     return re.sub(r'(<a[^>]*href="story:([^"\s]+)"[^>]*>)(.*?)(</a>)',sub,text,flags=re.S)
 
 def references(p,id):
-    return [o['name'] for o in objects(p) if o['id']!=id and (id in o.get('links',[]) or id in json.dumps(o.get('values',{})) or ('story:'+id) in o.get('html',''))]
+    return [o['name'] for o in objects(p) if o['id']!=id and (o.get('era')==id or id in o.get('links',[]) or id in json.dumps(o.get('values',{})) or ('story:'+id) in o.get('html',''))]
 
 class Calendar:
     def __init__(self,c): self.c=c
@@ -92,3 +92,25 @@ class Calendar:
         for r in c.get('leaps',[]):
             if r['every']<1 or not 1<=r['month']<=len(c['months']) or r.get('days',1)<0:raise ValueError('Ungültige Schaltregel')
         c['format'].format(year=1,month='Mond',day=1,weekday='Ersttag')
+
+    def date_from_ordinal(self,value):
+        """Inverse calendar mapping, including negative years and periodic leap days."""
+        day=int(value);epoch=self.index(self.c['epoch'])
+        def year(index):return index if self.c['year_zero'] or index<0 else index+1
+        if not self.c['months']:return str(year(epoch+day))
+        base=sum(m['days'] for m in self.c['months']);estimate=epoch+day//base
+        lo=estimate-2;hi=estimate+2
+        def start(index):return self.ordinal(f'{year(index)}/1/1')
+        step=4
+        while start(lo)>day:hi=lo;lo-=step;step*=2
+        step=4
+        while start(hi)<=day:lo=hi;hi+=step;step*=2
+        while hi-lo>1:
+            mid=(lo+hi)//2
+            if start(mid)<=day:lo=mid
+            else:hi=mid
+        y=year(lo);remaining=day-start(lo)
+        for month,length in enumerate(self.month_lengths(y),1):
+            if remaining<length:return f'{y}/{month}/{remaining+1}'
+            remaining-=length
+        raise ValueError('Datum liegt außerhalb des Kalenders.')

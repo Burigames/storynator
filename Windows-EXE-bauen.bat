@@ -7,8 +7,8 @@ if errorlevel 1 goto fail
 if errorlevel 1 goto fail
 .venv\Scripts\python.exe scripts\build_windows.py
 if errorlevel 1 goto fail
-echo Fertig: dist\Storynator.exe
-echo Diese einzelne Datei kann direkt gestartet und weitergegeben werden.
+echo Fertig: dist\Storynator\Storynator.exe
+echo Den gesamten Ordner dist\Storynator weitergeben oder installer\Storynator.iss mit Inno Setup 6 bauen.
 pause
 exit /b 0
 :fail

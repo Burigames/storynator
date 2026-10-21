@@ -36,10 +36,12 @@ PATHS={
  'focus':'M3 8V3h5 M16 3h5v5 M21 16v5h-5 M8 21H3v-5',
  'break':'M4 4h16v5H4z M4 15h16v5H4z M2 12h20',
  'list':'M8 5h13 M8 12h13 M8 19h13 M3 5h.01 M3 12h.01 M3 19h.01',
+ 'edit':'M4 20l5-1L21 7l-4-4L5 15z M14 6l4 4',
  'more':'M5 12h.01 M12 12h.01 M19 12h.01',
 }
 
-def icon(name,color='#63736e',size=22):
+def icon(name,color=None,size=22):
+    color=color or theme_colors(CURRENT['mode'],CURRENT['accent'])['muted']
     svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="-1 -1 27 27"><path d="{PATHS.get(name,PATHS["file"])}" fill="none" stroke="{color}" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     pix=QPixmap(size*2,size*2);pix.fill(Qt.transparent);p=QPainter(pix);QSvgRenderer(QByteArray(svg.encode())).render(p);p.end();pix.setDevicePixelRatio(2);return QIcon(pix)
 
@@ -152,32 +154,32 @@ QToolTip { background:#213e2d; color:white; border:0; padding:6px; }
 ACCENTS={'forest':('#365d43','#86ac77'),'ocean':('#235e87','#74b5de'),'lavender':('#70549b','#b29ae4'),'amber':('#8a5d19','#e5b568'),'rose':('#97536d','#df9ab8')}
 CURRENT={'mode':'light','accent':'forest','link':'#365d43'}
 
+def blend(a,b,ratio):
+    a=QColor(a);b=QColor(b);return QColor(round(a.red()*(1-ratio)+b.red()*ratio),round(a.green()*(1-ratio)+b.green()*ratio),round(a.blue()*(1-ratio)+b.blue()*ratio)).name()
+
 def theme_colors(mode,accent):
-    dark=mode=='dark';base,bright=ACCENTS.get(accent,ACCENTS['forest'])
-    return {'window':'#171d23' if dark else '#f3f4f0','paper':'#20282f' if dark else '#fffefa','text':'#e0e7ed' if dark else '#283e35','muted':'#a0aeb8' if dark else '#687a70','border':'#36434c' if dark else '#dce4d6','accent':bright if dark else base,'selected':'#314453' if dark else '#e5eddf'}
+    dark=mode=='dark';base,bright=ACCENTS.get(accent,ACCENTS['forest']);paper='#20272f' if dark else '#ffffff';color=bright if dark else base
+    return {'window':'#151b22' if dark else '#f3f5f8','paper':paper,'text':'#e2e8ef' if dark else '#263442','muted':'#a3afbd' if dark else '#748292','border':'#35414e' if dark else '#dfe5ec','accent':color,'selected':blend(paper,color,.18 if dark else .11),'sidebar':'#17212c'}
 
 def apply_theme(app,mode=None,accent=None):
-    settings=QSettings('Storynator','Storynator');mode=mode or settings.value('appearance/mode','light');accent=accent or settings.value('appearance/accent','forest');mode=mode if mode in ('light','dark') else 'light';accent=accent if accent in ACCENTS else 'forest'
-    CURRENT.update(mode=mode,accent=accent);colors=theme_colors(mode,accent);CURRENT['link']=colors['accent'];style=STYLE
-    replacements={'#365d43':ACCENTS[accent][0],'#284c35':QColor(ACCENTS[accent][0]).darker(120).name(),'#597f52':colors['accent'],'#2f573b':colors['accent'],'#55794b':colors['accent'],'#7e9e79':colors['accent']}
-    if accent!='forest':
-        base=QColor(ACCENTS[accent][0])
-        for source,factor in [('#192c26',260),('#233b30',200),('#314c3c',150),('#34513e',120),('#2a4636',150),('#243e31',170),('#223d30',170)]:replacements[source]=base.darker(factor).name()
-    if mode=='dark':
-        paper=['#fffefa','#fbfcf9','#f7f8f5'];back=['#f3f4f0'];dark_text=['#283e35','#203c30','#243e32','#303c33','#3c5445','#24452e','#2f5437'];muted=['#87948d','#84918a','#687a70','#87948a','#6c7d70','#839080','#647761','#607a65','#4d6d50'];border=['#e0e5dd','#e1e5de','#e7e7dd','#e1e7dc','#dbe2d6','#dce4d6','#dae3d3','#b9cbb9','#eef0e9','#e4e9df','#b9cbb0','#c9d3c2'];surfaces=['#e5eadf','#e9eee4','#dce6d5','#ecf1e7','#e5ecdf','#f0f3ed','#e2e9dc','#dfe8d8','#edf1e7','#e5eddf','#e1e8da','#d2e9dd']
-        for value in paper:replacements[value]=colors['paper']
-        for value in back:replacements[value]=colors['window']
-        for value in dark_text:replacements[value]=colors['text']
-        for value in muted:replacements[value]=colors['muted']
-        for value in border:replacements[value]=colors['border']
-        for value in surfaces:replacements[value]=colors['selected']
-        replacements['#163e30']=colors['text']
-    style=re.sub(r'#[0-9a-fA-F]{6}',lambda m:replacements.get(m.group(),m.group()),style)
-    app.setStyle('Fusion');app.setFont(QFont('Segoe UI',10));app.setStyleSheet(style)
-    palette=app.palette()
+    settings=QSettings('Storynator','Storynator');mode=mode or settings.value('appearance/mode','light');accent=accent or settings.value('appearance/accent','forest');mode=mode if mode in ('light','dark') else 'light';accent=accent if accent in ACCENTS else 'forest';CURRENT.update(mode=mode,accent=accent);colors=theme_colors(mode,accent);CURRENT['link']=colors['accent'];base=ACCENTS[accent][0]
+    roles={
+      'paper':['#fffefa','#fbfcf9'],
+      'window':['#f3f4f0','#f7f8f5'],
+      'text':['#283e35','#203c30','#243e32','#303c33','#3c5445','#24452e','#2f5437','#344e35','#163e30'],
+      'muted':['#87948d','#84918a','#687a70','#87948a','#6c7d70','#839080','#647761','#8b9a87'],
+      'border':['#e0e5dd','#e1e5de','#e7e7dd','#e1e7dc','#dbe2d6','#dce4d6','#dae3d3','#b9cbb9','#eef0e9','#e4e9df','#b9cbb0','#c9d3c2'],
+      'selected':['#e5eadf','#e9eee4','#dce6d5','#ecf1e7','#e5ecdf','#f0f3ed','#e2e9dc','#dfe8d8','#edf1e7','#e5eddf','#e1e8da','#d2e9dd'],
+      'accent':['#607a65','#4d6d50','#2f573b','#597f52','#55794b','#7e9e79','#66885b']}
+    replacements={value:colors[role] for role,values in roles.items() for value in values}
+    replacements.update({'#365d43':base,'#284c35':QColor(base).darker(115).name(),'#192c26':colors['sidebar'],'#213e2d':colors['sidebar'],'#233b30':'#202e3c','#314c3c':'#324354','#34513e':blend(colors['sidebar'],base,.55),'#2a4636':blend(colors['sidebar'],base,.45),'#243e31':blend(colors['sidebar'],base,.3),'#223d30':blend(colors['sidebar'],base,.25),'#b2c2b7':'#c0cad5','#768f81':'#8294a6','#a9bfb0':'#b6c3cf','#b8c9bc':'#c0cad5','#a9c4b1':'#bdcbd9','#f4f7ef':'#f7f9fc','#f5f5ec':'#f7f9fc','#f7f7ee':'#f7f9fc'})
+    style=re.sub(r'#[0-9a-fA-F]{6}',lambda match:replacements.get(match.group(),match.group()),STYLE)
+    style+='\nQTextBrowser { background:transparent; border:0; } QProgressBar { background:'+colors['selected']+';border:0;border-radius:4px;height:8px; } QProgressBar::chunk { background:'+colors['accent']+';border-radius:4px; }'
+    app.setStyle('Fusion');app.setFont(QFont('Segoe UI',10));app.setStyleSheet(style);palette=app.palette()
     for role,key in [(QPalette.Window,'window'),(QPalette.WindowText,'text'),(QPalette.Text,'text'),(QPalette.Base,'paper'),(QPalette.Button,'paper'),(QPalette.ButtonText,'text'),(QPalette.Highlight,'selected'),(QPalette.HighlightedText,'text'),(QPalette.ToolTipBase,'paper'),(QPalette.ToolTipText,'text')]:palette.setColor(role,QColor(colors[key]))
-    app.setPalette(palette)
-    # Re-render vector icons after theme changes; their names remain stable.
+    palette.setColor(QPalette.Link,QColor(colors['accent']));app.setPalette(palette)
     for widget in app.allWidgets():
         name=widget.property('iconName')
         if name and hasattr(widget,'setIcon'):widget.setIcon(icon(name,'#ffffff' if widget.property('role')=='primary' else colors['muted']))
+        if widget.objectName() in ['brandMark','heroMark']:
+            size=36 if widget.objectName()=='brandMark' else 180;widget.setPixmap(icon('feather',colors['accent'],size).pixmap(size,size))

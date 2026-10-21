@@ -104,7 +104,8 @@ def test_studio_navigation_focus_and_packaged_example(qt):
     w.toggle_focus();assert not w.centralWidget().widget(0).isVisible();assert not w.tabs.currentWidget().findChild(QFrame,'context').isVisible()
     w.toggle_focus();assert w.centralWidget().widget(0).isVisible();assert editor.textCursor().position()==3
     w.navigate('world');assert w.nav_buttons['world'].isChecked();assert w.tabs.currentWidget().world_page
-    w.open_object(w.p['entries'][0]['id']);assert w.section=='world';assert w.editor() is not None
+    w.open_object(w.p['entries'][0]['id']);assert w.section=='world';assert w.editor() is None;assert not w.tabs.currentWidget().world_edit
+    w.render_world_page(w.tabs.currentWidget(),True);qt.processEvents();w.tabs.currentWidget().findChild(Rich).setFocus();qt.processEvents();assert w.editor() is not None
     w.navigate('timeline');assert w.tabs.currentWidget().timeline_page;assert w.nav_buttons['timeline'].isChecked()
     w.navigate('editor');assert w.editor() is editor;assert editor.textCursor().position()==3
     w.dirty=False;w.hide();w.deleteLater();qt.processEvents()
@@ -141,7 +142,7 @@ def test_lists_and_tables_show_four_rows(qt):
         widget.resize(450,1);widget.show();qt.processEvents()
         rect=widget.visualItemRect(widget.item(3)) if isinstance(widget,RoomyList) else widget.visualItemRect(widget.item(3,0))
         assert rect.bottom()<widget.viewport().height();widget.hide();widget.deleteLater()
-    w=Main(recover=False);w.tabs.clear();w.p=sample();w.open_object(w.p['entries'][0]['id']);w.show();qt.processEvents();ls=w.tabs.currentWidget().findChild(QListWidget);assert ls.minimumHeight()>=160;assert ls.maximumHeight()>ls.minimumHeight();w.dirty=False;w.hide()
+    w=Main(recover=False);w.tabs.clear();w.p=sample();w.open_object(w.p['entries'][0]['id']);w.render_world_page(w.tabs.currentWidget(),True);w.show();qt.processEvents();ls=w.tabs.currentWidget().findChild(QListWidget);assert ls.minimumHeight()>=160;assert ls.maximumHeight()>ls.minimumHeight();w.dirty=False;w.hide()
 
 def test_print_preferences_titles_and_exported_format(qt,tmp_path):
     import printing

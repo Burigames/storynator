@@ -46,3 +46,10 @@ Zusätzlich: Python-Syntaxprüfung und Start-Smoke-Test, Öffnen aller Feldtypen
 Zusätzlich geprüft: Navigation zwischen Editor, Welt und Timeline, Erhalt der Schreibposition und Fokusmodus mit ausgeblendeten Seitenbereichen. Der neue gemeinsame Stil wurde anhand von Fensteraufnahmen von Editor, Startseite, Welt und Timeline kontrolliert.
 
 Der Windows-Release-Workflow führt dieselben Tests unter Windows mit der nativen Qt-Windows-Plattform aus. Anschließend baut PyInstaller eine einzelne EXE und startet genau diese mit `--smoke-test`: eingebettetes Beispiel laden, Editor und Timeline anzeigen, Projekt speichern/wieder laden und PDF erzeugen. Nur bei Erfolg wird die EXE als GitHub-Release veröffentlicht. Der erste Lauf fand einen Windows-spezifischen Fehler beim Synchronisieren eines nur lesend geöffneten Dateihandles; die Synchronisierung verwendet nun einen schreibfähigen Handle.
+
+
+## Version 0.4
+
+23 automatisierte Tests unter Linux mit echtem Qt (offscreen) bestanden. Zusätzlich Starttest der Anwendung mit Beispielprojekt, Speichern/Wiederöffnen und PDF. Kalender-Inversrechnung deckt negative Daten, verschiedene Epochen, Kalender mit/ohne Jahr null, ungleiche Monate und Schaltregeln ab. Timeline prüft verkleinerten Wertebereich, horizontales Verschieben, Cluster und echte Datumswerte. Preset-Tests prüfen strikte Ablehnung von Eintragsdaten auf allen Ebenen, Aktivierung ohne Einträge, ID-Erhalt beim Reaktivieren, Vorlagenexport und Datenerhalt beim Löschen. Welt-Leseansicht und kategoriebasierte Dropdown-IDs sind geprüft. Ein tatsächlich gerendertes PDF bleibt auf der ersten Seite weiß, auch mit dunklem Theme und altem blauem Absatzhintergrund.
+
+Die Windows-Pipeline führt dieselben Qt-Tests aus, startet die gebaute Anwendung, installiert den Installer still, prüft Startmenü-Ziel und beide Dateizuordnungen und startet anschließend die installierte Anwendung im Projektspeicher/PDF-Test. Veröffentlichung erfolgt erst nach erfolgreichen Schritten. Keine Aussage über ausbleibende Antivirus- oder SmartScreen-Warnungen: Der Build ist ohne vertrauenswürdiges Herausgeberzertifikat unsigniert.

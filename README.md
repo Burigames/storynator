@@ -4,25 +4,38 @@ Eine lokal laufende Desktop-Anwendung zum Schreiben und zur Verwaltung einer Ges
 
 ## Direkt starten – Windows
 
-**[Storynator.exe herunterladen](https://github.com/Burigames/storynator/releases/latest/download/Storynator.exe)**
+**[Storynator-Setup.exe herunterladen](https://github.com/Burigames/storynator/releases/latest/download/Storynator-Setup.exe)**
 
-Die EXE herunterladen und doppelklicken. Kein Python, kein Installationsskript, kein Entpacken und keine Paketinstallation. Alle benötigten Laufzeitbibliotheken und ein Beispielprojekt sind in der einzelnen Datei enthalten. Unterstützt wird Windows 10/11 x64. Der erste Start kann durch das interne Entpacken der Bibliotheken etwas länger dauern.
+Die Setup-EXE ausführen. Sie installiert Storynator für den aktuellen Windows-Benutzer, legt einen Eintrag für Startmenü und Windows-Suche an und registriert `.storynator` sowie `.storynator-preset`. Kein Python, keine weiteren Laufzeitinstallationen. Unterstützt wird Windows 10/11 x64. Bereits anderweitig gewählte Standardprogramme respektiert Windows; dann gegebenenfalls „Öffnen mit → Storynator“ wählen. Vorhandene Projektdateien bleiben bei Updates und Deinstallation erhalten.
 
-Die Releases werden automatisch auf einem Windows-Runner gebaut. Vor der Veröffentlichung laufen die Integrationstests und ein Start-, Projektdatei- und PDF-Test **der gebauten EXE**. Auf der [Releases-Seite](https://github.com/Burigames/storynator/releases) stehen die veröffentlichten Windows-Versionen; „Code → Download ZIP“ liefert dagegen den Quellcode für Entwickler.
+Alternativ: **[Portable-Version](https://github.com/Burigames/storynator/releases/latest/download/Storynator-Portable.zip)** vollständig entpacken und `Storynator/Storynator.exe` starten. Die portable Version registriert keine Dateitypen. Der vollständige Ordner gehört zur Anwendung.
+
+Die Anwendung wird als konventioneller Programmordner ohne EXE-Kompressor gebaut. Die Veröffentlichung prüft Tests, die gebaute EXE, eine echte Installation, Startmenü-Verknüpfung und Dateizuordnungen auf Windows. Prüfsummen stehen in `SHA256SUMS.txt` beim Release. **Die Anwendung ist aktuell nicht digital signiert.** Deshalb können Windows/SmartScreen weiterhin vor einem unbekannten Herausgeber warnen. Eine verlässliche Beseitigung solcher Herausgeberwarnungen benötigt ein vertrauenswürdiges Codesignatur-Zertifikat; Schutzfunktionen werden nicht umgangen oder abgeschaltet. Ein konkreter Virenfund muss mit Fundname und Datei separat geprüft werden.
 
 ### Für Entwickler
 
 Quellcode: Python 3.11 oder neuer. `python -m venv .venv`, Umgebung aktivieren, `python -m pip install -r requirements.txt`, `python app.py`. Unter Windows stehen außerdem `Installieren.bat` und `Start-Storynator.bat` als Entwicklerhilfen bereit. Endnutzer benötigen diese Dateien nicht.
 
-Der native Windows-Build erfolgt mit `python scripts/build_windows.py` nach Installation von `requirements-dev.txt`. Alternativ `Windows-EXE-bauen.bat`. Ergebnis: eine einzelne `dist/Storynator.exe`. Der Workflow `.github/workflows/windows.yml` baut, testet und veröffentlicht diese Datei.
+Der native Windows-Build erfolgt mit `python scripts/build_windows.py` nach Installation von `requirements-dev.txt`. Alternativ `Windows-EXE-bauen.bat`. Ergebnis: `dist/Storynator/Storynator.exe` mit Bibliotheken. Inno Setup 6 kompiliert `installer/Storynator.iss` zu `dist/Storynator-Setup.exe`. Der Workflow baut, testet und veröffentlicht Installer und Portable-ZIP.
 
 ## Das neue Schreibatelier
 
-Dunkelgrüne Navigation, warme Papierfläche, zurückhaltende Symbolleiste und viel Raum für den Text. Editor, Timeline und Welt sind klar getrennte Arbeitsbereiche. Die Weltübersicht zeigt Kategorien als Karten; die Timeline stellt überlappende Zeiträume in getrennten Spuren dar. Die rechte Schreibhilfe öffnet Welt-Einträge, ohne das Kapitel zu schließen. Mit F11 lassen sich Navigation und Schreibhilfe für konzentriertes Schreiben ausblenden. Die Oberfläche folgt einem gemeinsamen Design in `design.py`, einschließlich Vektorsymbolen, Abständen, Farben und Dialogen.
+Neutrale dunkle Navigation, helle Papierfläche, zurückhaltende Symbolleiste und viel Raum für den Text. Editor, Timeline und Welt sind klar getrennte Arbeitsbereiche. Die Weltübersicht zeigt Kategorien als Karten; die Timeline zeigt schmale Zeitalter-Spuren über einem gemeinsamen Ereignisband. Die rechte Schreibhilfe öffnet Welt-Einträge, ohne das Kapitel zu schließen. Mit F11 lassen sich Navigation und Schreibhilfe für konzentriertes Schreiben ausblenden. Die Oberfläche folgt einem gemeinsamen Design in `design.py`, einschließlich Vektorsymbolen, Abständen, Farben und Dialogen.
 
 ![Storynator Schreibatelier](Vorschau.png)
 
 ![Storynator Dark Mode – Ozean](Vorschau-Dark.png)
+
+## Neu in Version 0.4
+
+- Timeline: schmale, überlappende Zeitalter oben; Ereignisse als Punkte darunter. Nahe Punkte werden nach Bildschirmabstand zu zählbaren Gruppen zusammengefasst. Klick öffnet eine getrennt auswählbare Ereignisliste. Zeitspannen bleiben als Linien unter dem Ereignisband sichtbar und anklickbar.
+- Mausrad verkleinert/vergrößert den tatsächlichen Datumsbereich. Ziehen, horizontale Bildlaufleiste, Pfeile oder Umschalt+Mausrad verschieben ihn. „Alles zeigen“ setzt den Ausschnitt zurück. Achsenwerte stammen aus dem Projektkalender, auch vor dem Ursprung und ohne Jahr null.
+- Welt-Einträge öffnen als vollständige, scrollbar lesbare Detailansicht. „Bearbeiten“ öffnet Felder, „Fertig“ kehrt zur Ansicht zurück. Änderungen werden unmittelbar Teil des Projekts; zum dauerhaften Speichern Strg+S verwenden.
+- Akzentfarben gelten für alle UI-Hervorhebungen. Druck/PDF erhalten eine weiße Papierfläche, unabhängig vom Theme oder früher gespeicherten Absatzhintergründen.
+- **Addon → Addons verwalten:** Vorlagen importieren, aktivieren/deaktivieren oder löschen. Das integrierte Weltenbau-Preset mit 14 Kategorien ist zunächst inaktiv. Aktivieren erzeugt ausschließlich Kategorien und Felder, niemals Einträge. Addons enthalten weder ausführbaren Code noch Eintragsdaten; das Format lehnt solche Inhalte ab.
+- Deaktivieren blendet unbenutzte Preset-Kategorien aus. Kategorien mit eigenen Einträgen bleiben sichtbar, damit Inhalte erreichbar bleiben. Reaktivieren verwendet dieselben IDs. Löschen entfernt unbenutzte Vorlagen; benötigte Kategorien bleiben als eigene Kategorien erhalten.
+- **Addon → Kategorien als Preset exportieren:** Kategorien auswählen; benötigte Quellkategorien werden automatisch mitgenommen. `.storynator-preset` enthält ausschließlich Vorlagen, keine Welt-Einträge, Bilder oder Beschreibungen aus Einträgen. Import fügt ein Preset zunächst inaktiv zur lokalen Bibliothek hinzu. Aktivierte Vorlagen reisen mit der Projektdatei mit.
+- **Welt → Kategorievorlage → Feldeinstellungen:** Für Dropdown und Mehrfachauswahl unter „Auswahlquelle“ eine Kategorie wählen. Deren Einträge werden mit ihrem Namen angeboten; gespeichert wird die stabile ID. Umbenennen erhält die Verbindung. Bisherige freie Werte bleiben sichtbar, bis eine neue Auswahl getroffen wird.
 
 ## Neu in Version 0.3
 
