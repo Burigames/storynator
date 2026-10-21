@@ -104,6 +104,7 @@ class Main(QMainWindow):
             try:self.p=load_project(self.recovery);self.tabs.clear();self.refresh();self.changed();self.open_object(self.p['documents'][0]['id']) if self.p['documents'] else self.home()
             except Exception as e:self.error(e)
     def close_tab(self,index):
+        if index<0:return
         page=self.tabs.widget(index);self.tabs.removeTab(index)
         if page and self.active_editor and page.isAncestorOf(self.active_editor):self.active_editor=None
         if page:page.deleteLater()
@@ -115,11 +116,17 @@ class Main(QMainWindow):
         for text,fn in [('Öffnen',lambda:self.open_object(item.data(0,Qt.UserRole))),('Umbenennen',self.rename),('Nach oben',lambda:self.move(-1)),('Nach unten',lambda:self.move(1)),('Löschen',self.delete)]:menu.addAction(text).triggered.connect(fn)
         menu.exec(self.nav.viewport().mapToGlobal(pos))
     def tab_changed(self,index):
+        self.decorate_tabs()
         page=self.tabs.widget(index)
         if page:
             section=getattr(page,'section','editor');self.set_section(section)
             if getattr(page,'obj',None):self.breadcrumb.setText(('MANUSKRIPT' if section=='editor' else 'DEINE WELT' if section=='world' else 'TIMELINE')+'   /   '+page.obj['name'])
         self.update_status()
+    def decorate_tabs(self):
+        for i in range(self.tabs.count()):
+            bar=self.tabs.tabBar();existing=bar.tabButton(i,QTabBar.RightSide)
+            if existing and existing.objectName()=='tabClose':continue
+            page=self.tabs.widget(i);close=QToolButton();close.setObjectName('tabClose');close.setText('×');close.setToolTip('Tab schließen');close.setAccessibleName('Tab schließen');close.setFocusPolicy(Qt.NoFocus);close.setFixedSize(20,20);close.clicked.connect(lambda checked=False,p=page:self.close_tab(self.tabs.indexOf(p)));bar.setTabButton(i,QTabBar.RightSide,close)
     def set_section(self,section):
         self.section=section
         for key,b in self.nav_buttons.items():b.setChecked(key==section)

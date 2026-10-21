@@ -13,7 +13,8 @@ def save_project(p,path):
             data={**p,'assets':{}}
             z.writestr('project.json',json.dumps(data,ensure_ascii=False))
             for key,value in p['assets'].items(): z.writestr('assets/'+key,base64.b64decode(value))
-        with open(tmp,'rb') as f: os.fsync(f.fileno())
+        # Windows FlushFileBuffers requires a writable handle.
+        with open(tmp,'r+b') as f: os.fsync(f.fileno())
         os.replace(tmp,path)
     finally:
         if os.path.exists(tmp): os.unlink(tmp)

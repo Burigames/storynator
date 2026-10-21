@@ -111,7 +111,8 @@ QTabBar { background:#f3f4f0; }
 QTabBar::tab { color:#87948a; background:transparent; padding:14px 24px; border:0; border-bottom:2px solid transparent; }
 QTabBar::tab:selected { color:#2f573b; background:#fbfcf9; border-bottom:2px solid #597f52; }
 QTabBar::tab:hover { color:#2f573b; }
-QTabBar::close-button { width:12px; height:12px; }
+QToolButton#tabClose { color:#8b9a87; font-size:18px; padding:0; margin:0; }
+QToolButton#tabClose:hover { color:#344e35; background:#dfe8d8; }
 QTabBar::close-button:hover { background:#e2e9dc; border-radius:6px; }
 QMenuBar { background:#fbfcf9; color:#6c7d70; font-size:11px; padding:2px 6px; }
 QMenuBar::item:selected { background:#e5ecdf; }

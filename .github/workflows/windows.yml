@@ -23,13 +23,13 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
       - name: Run integration tests on Windows
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QPA_PLATFORM: windows
         run: python -m pytest -q
       - name: Build self-contained EXE
         run: python scripts/build_windows.py
       - name: Test packaged application
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QPA_PLATFORM: windows
           STORYNATOR_SMOKE_LOG: smoke-error.txt
         shell: pwsh
         run: |

@@ -1,5 +1,5 @@
-import os, base64, json, pytest
-os.environ['QT_QPA_PLATFORM']='offscreen'
+import os, sys, base64, json, pytest
+os.environ.setdefault('QT_QPA_PLATFORM','windows' if sys.platform=='win32' else 'offscreen')
 from app import *
 from PySide6.QtGui import QPixmap, QPen, QBrush
 from pypdf import PdfReader
@@ -94,3 +94,16 @@ def test_template_and_calendar_dialogs(qt,monkeypatch):
     def fill_calendar():
         d=qt.activeModalWidget();d.findChildren(QLineEdit)[0].setText('Sonnenzeit');tables=d.findChildren(QTableWidget);tables[0].item(0,0).setText('Sonnenmond');tables[0].item(0,1).setText('40');next(b for b in d.findChildren(QPushButton) if b.text()=='Kalender prüfen und übernehmen').click()
     QTimer.singleShot(0,fill_calendar);w.calendar();assert w.p['calendar']['name']=='Sonnenzeit';assert w.p['calendar']['months'][0]['days']==40;w.dirty=False
+
+def test_studio_navigation_focus_and_packaged_example(qt):
+    from design import apply_theme
+    apply_theme(qt);w=Main(recover=False);w.tabs.clear();w.p=sample();w.refresh();w.show();qt.processEvents()
+    w.navigate('editor');editor=w.editor();assert editor is not None;assert editor.objectName()=='manuscript';assert w.nav_buttons['editor'].isChecked()
+    cursor=editor.textCursor();cursor.setPosition(3);editor.setTextCursor(cursor)
+    w.toggle_focus();assert not w.centralWidget().widget(0).isVisible();assert not w.tabs.currentWidget().findChild(QFrame,'context').isVisible()
+    w.toggle_focus();assert w.centralWidget().widget(0).isVisible();assert editor.textCursor().position()==3
+    w.navigate('world');assert w.nav_buttons['world'].isChecked();assert w.tabs.currentWidget().world_page
+    w.open_object(w.p['entries'][0]['id']);assert w.section=='world';assert w.editor() is not None
+    w.navigate('timeline');assert w.tabs.currentWidget().timeline_page;assert w.nav_buttons['timeline'].isChecked()
+    w.navigate('editor');assert w.editor() is editor;assert editor.textCursor().position()==3
+    w.dirty=False;w.hide();w.deleteLater();qt.processEvents()

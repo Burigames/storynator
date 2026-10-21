@@ -2,7 +2,7 @@
 
 Umgebung: Linux, Python 3.11, PySide6 6.12.0, Qt-Offscreen-Plattform.
 
-Ergebnis: **6 automatisierte Tests bestanden** (`python -m pytest -q`).
+Ergebnis: **7 automatisierte Tests unter Linux bestanden** (`python -m pytest -q`).
 
 1. **Vollständiger Projekt-Roundtrip:** Kategorie „Charaktere“ mit Text-, Bild-, Dropdown- und Slider-Feld; Charakter und Land mit gegenseitiger Verknüpfung; formatiertes Kapitel mit Bild und Charakterlink; eigener Kalender; zwei überlappende Zeitalter und zwei gleichzeitige Ereignisse. ZIP-Datei speichern, aus Datei neu laden, Daten und Bildbytes vergleichen. Alle Objekte in echten Qt-Tabs öffnen; grafische Timeline aufbauen. Bildressource im exportierten Textdokument prüfen. Charakter umbenennen, Linknamen auflösen, PDF erzeugen, Text aus PDF auslesen und erneut speichern/öffnen.
 2. **Kalenderarithmetik:** Negative Jahre, Übergang von Jahr −1 zu Jahr 1 ohne Jahr null, Ablehnung von Jahr null, ungültige Spanne, Schaltjahre vor und nach dem Ursprung, Kalender mit Jahr null und Kalender mit reinen Jahreszahlen.
@@ -14,3 +14,9 @@ Ergebnis: **6 automatisierte Tests bestanden** (`python -m pytest -q`).
 Zusätzlich: Python-Syntaxprüfung und Start-Smoke-Test, Öffnen aller Feldtypen, visuelle Kontrolle eines Qt-Fensterbilds. Das Beispielprojekt ist eine unabhängig gespeicherte `.storynator`-Datei.
 
 **Nicht als durchgeführt zu verstehen:** interaktiver vollständiger Handtest auf Windows, tatsächliches Beenden und Neustarten eines Windows-Prozesses, Erzeugung einer Windows-EXE, physischer Druck, Hardware-Stromausfall oder Validierung auf fremden Druckern. „Wiederöffnen“ ist im Test ein neues Einlesen des Archivs bzw. der App-Öffnen-Codepfad. Die noch fehlenden Produktfunktionen stehen in README.md.
+
+## Überarbeitung des Schreibateliers und Windows-Paketierung
+
+Zusätzlich geprüft: Navigation zwischen Editor, Welt und Timeline, Erhalt der Schreibposition und Fokusmodus mit ausgeblendeten Seitenbereichen. Der neue gemeinsame Stil wurde anhand von Fensteraufnahmen von Editor, Startseite, Welt und Timeline kontrolliert.
+
+Der Windows-Release-Workflow führt dieselben Tests unter Windows mit der nativen Qt-Windows-Plattform aus. Anschließend baut PyInstaller eine einzelne EXE und startet genau diese mit `--smoke-test`: eingebettetes Beispiel laden, Editor und Timeline anzeigen, Projekt speichern/wieder laden und PDF erzeugen. Nur bei Erfolg wird die EXE als GitHub-Release veröffentlicht. Der erste Lauf fand einen Windows-spezifischen Fehler beim Synchronisieren eines nur lesend geöffneten Dateihandles; die Synchronisierung verwendet nun einen schreibfähigen Handle.
