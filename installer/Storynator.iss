@@ -1,7 +1,7 @@
 [Setup]
 AppId={{6A746520-8499-4779-99F7-2C5C306EC683}
 AppName=Storynator
-AppVersion=0.4.0
+AppVersion=0.5.0
 AppPublisher=Burigames
 DefaultDirName={localappdata}\Programs\Storynator
 DefaultGroupName=Storynator

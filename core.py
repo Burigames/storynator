@@ -3,28 +3,9 @@ from pathlib import Path
 
 def uid(): return str(uuid.uuid4())
 def new_project(name='Meine Geschichte'):
-    return dict(version=1,name=name,documents=[dict(id=uid(),name='Kapitel 1',html='')],categories=[],entries=[],events=[],assets={},calendar=dict(name='Weltzeit',year_zero=False,epoch=1,months=[dict(name='Erster Mond',days=30),dict(name='Zweiter Mond',days=30)],week=['Ersttag','Zweittag','Dritttag','Vierttag','Fünfttag'],format='{day}. {month} {year}',units={'year':'Jahr','month':'Monat','day':'Tag'},leaps=[]))
+    return dict(version=2,project_id=uid(),covers={'project':'','book':''},name=name,documents=[dict(id=uid(),name='Kapitel 1',html='')],categories=[],entries=[],events=[],assets={},calendar=dict(name='Weltzeit',year_zero=False,epoch=1,months=[dict(name='Erster Mond',days=30),dict(name='Zweiter Mond',days=30)],week=['Ersttag','Zweittag','Dritttag','Vierttag','Fünfttag'],format='{day}. {month} {year}',units={'year':'Jahr','month':'Monat','day':'Tag'},leaps=[]))
 
-def save_project(p,path):
-    path=Path(path); path.parent.mkdir(parents=True,exist_ok=True)
-    fd,tmp=tempfile.mkstemp(dir=path.parent,prefix=path.name+'.',suffix='.tmp'); os.close(fd)
-    try:
-        with zipfile.ZipFile(tmp,'w',zipfile.ZIP_DEFLATED) as z:
-            data={**p,'assets':{}}
-            z.writestr('project.json',json.dumps(data,ensure_ascii=False))
-            for key,value in p['assets'].items(): z.writestr('assets/'+key,base64.b64decode(value))
-        # Windows FlushFileBuffers requires a writable handle.
-        with open(tmp,'r+b') as f: os.fsync(f.fileno())
-        os.replace(tmp,path)
-    finally:
-        if os.path.exists(tmp): os.unlink(tmp)
-
-def load_project(path):
-    with zipfile.ZipFile(path) as z:
-        p=json.loads(z.read('project.json'))
-        if p.get('version')!=1: raise ValueError('Unbekannte Dateiversion')
-        p['assets']={n[7:]:base64.b64encode(z.read(n)).decode() for n in z.namelist() if n.startswith('assets/') and not n.endswith('/')}
-        return p
+from storage import save_project,load_project
 
 def objects(p): return p['entries']+p['events']+p['documents']
 def resolve(p,id): return next((x for x in objects(p) if x['id']==id),None)
@@ -32,8 +13,9 @@ def embed(p,path):
     data=Path(path).read_bytes(); key=uid()+Path(path).suffix.lower(); p['assets'][key]=base64.b64encode(data).decode(); return key
 
 def render(p,text):
+    lookup={o['id']:o for o in objects(p)}
     def sub(match):
-        item=resolve(p,match.group(2));name=item['name'] if item else '[Gelöschter Eintrag]';body=match.group(3)
+        item=lookup.get(match.group(2));name=item['name'] if item else '[Gelöschter Eintrag]';body=match.group(3)
         # Qt writes font, size and emphasis into spans inside the anchor.
         # Preserve those spans on load and when changing the target's display name.
         if html.unescape(re.sub(r'<[^>]*>','',body))==name:return match.group(0)

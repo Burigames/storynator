@@ -1,5 +1,5 @@
 """Calendar-based timeline: true viewport zoom, panning and screen-space clusters."""
-import math
+import math,bisect,heapq
 from PySide6.QtCore import Qt,QRectF,QPointF,Signal
 from PySide6.QtGui import QPainter,QPen,QColor,QFont
 from PySide6.QtWidgets import QWidget,QVBoxLayout,QHBoxLayout,QLabel,QScrollBar,QToolTip,QDialog,QPushButton
@@ -23,23 +23,26 @@ def cluster_points(points,threshold=32):
     return groups
 
 def era_lanes(eras):
-    ends=[];placed=[]
+    active=[];free=[];placed=[];count=0
     for start,end,event in sorted(eras,key=lambda row:(row[0],row[1],row[2]['id'])):
-        lane=next((i for i,last in enumerate(ends) if last<start),len(ends))
-        if lane==len(ends):ends.append(end)
-        else:ends[lane]=end
-        placed.append((start,end,event,lane))
-    return placed,len(ends)
+        while active and active[0][0]<start:heapq.heappush(free,heapq.heappop(active)[1])
+        if free:lane=heapq.heappop(free)
+        else:lane=count;count+=1
+        heapq.heappush(active,(end,lane));placed.append((start,end,event,lane))
+    return placed,count
 
 class TimelineCanvas(QWidget):
     activated=Signal(str)
     viewChanged=Signal()
     def __init__(self,host):
-        super().__init__();self.host=host;self.setMouseTracking(True);self.setMinimumHeight(450);self.setFocusPolicy(Qt.StrongFocus)
+        super().__init__();self.host=host;self.setMouseTracking(True);self.setMinimumHeight(450);self.setFocusPolicy(Qt.StrongFocus);self.setAccessibleName(tr('Zeitstrahl · Pfeile verschieben, Plus/Minus zoomen, Eingabe öffnet Ereignisse'))
         self.era_scroll=QScrollBar(Qt.Vertical,self);self.era_scroll.valueChanged.connect(lambda _:self.update());self.era_scroll.hide();self.hits=[];self.drag=None;self.points=[];self.spans=[];self.eras=[];self.total_lanes=0;self.begin=0.;self.end=1.;self.minimum=0.;self.maximum=1.;self.set_project()
     def set_project(self,keep_view=False):
-        self.cal=Calendar(self.host.p['calendar']);events=self.host.p['events'];spans=[(*self.cal.span(e['start'],e['end']),e) for e in events]
-        self.eras,self.total_lanes=era_lanes([row for row in spans if row[2]['kind']=='Zeitalter']);self.points=[(a,e) for a,b,e in spans if e['kind']!='Zeitalter'];self.spans=[row for row in spans if row[2]['kind']!='Zeitalter' and row[0]!=row[1]]
+        self.cal=Calendar(self.host.p['calendar']);events=self.host.p['events'];spans=[];self.invalid=[]
+        for e in events:
+            try:spans.append((*self.cal.span(e['start'],e['end']),e))
+            except (ValueError,KeyError,IndexError):self.invalid.append(e)
+        self.eras,self.total_lanes=era_lanes([row for row in spans if row[2]['kind']=='Zeitalter']);self.points=sorted([(a,e) for a,b,e in spans if e['kind']!='Zeitalter'],key=lambda item:item[0]);self.point_values=[a for a,e in self.points];self._cluster_cache=None;self.spans=[row for row in spans if row[2]['kind']!='Zeitalter' and row[0]!=row[1]]
         lo=min((a for a,b,e in spans),default=0);hi=max((b for a,b,e in spans),default=10);pad=max(1,(hi-lo)*.06);self.minimum=lo-pad;self.maximum=max(hi+pad,self.minimum+2)
         self.era_scroll.setRange(0,max(0,self.total_lanes-5));self.era_scroll.setVisible(self.total_lanes>5)
         if not keep_view:self.fit()
@@ -67,7 +70,10 @@ class TimelineCanvas(QWidget):
         for value in range(first,math.floor(self.end)+1,step):
             raw=self.cal.date_from_ordinal(value);out.append((value,self.cal.display(raw)))
         return out
-    def clusters(self):return cluster_points([(self.x(value),event) for value,event in self.points if self.begin<=value<=self.end])
+    def clusters(self):
+        key=(self.begin,self.end,self.width())
+        if self._cluster_cache and self._cluster_cache[0]==key:return self._cluster_cache[1]
+        lo=bisect.bisect_left(self.point_values,self.begin);hi=bisect.bisect_right(self.point_values,self.end);groups=cluster_points([(self.x(value),event) for value,event in self.points[lo:hi]]);self._cluster_cache=(key,groups);return groups
     def paintEvent(self,event):
         colors=theme_colors(CURRENT['mode'],CURRENT['accent']);accent=QColor(colors['accent']);fg=QColor(colors['text']);muted=QColor(colors['muted']);border=QColor(colors['border']);p=QPainter(self);p.setRenderHint(QPainter.Antialiasing);p.fillRect(self.rect(),QColor(colors['paper']));plot=self.plot();self.hits=[]
         p.setFont(QFont('Segoe UI',9));ticks=self.ticks()
@@ -92,6 +98,16 @@ class TimelineCanvas(QWidget):
         p.setPen(muted);p.setFont(QFont('Segoe UI',9));p.drawText(QRectF(34,baseline+55,plot.width(),36),Qt.AlignLeft|Qt.AlignVCenter,tr('Punkt anklicken · Gruppen öffnen · Mausrad zoomt · Ziehen verschiebt'))
         if not self.points:p.drawText(QRectF(34,baseline-20,plot.width(),40),Qt.AlignCenter,tr('Noch keine Ereignisse.'))
         self.era_scroll.setGeometry(self.width()-18,72,12,max(26,era_height-24));p.end()
+    def keyPressEvent(self,event):
+        key=event.key()
+        if key==Qt.Key_Left:self.pan(-(self.end-self.begin)/5)
+        elif key==Qt.Key_Right:self.pan((self.end-self.begin)/5)
+        elif key in [Qt.Key_Plus,Qt.Key_Equal]:self.zoom(1.5)
+        elif key==Qt.Key_Minus:self.zoom(1/1.5)
+        elif key==Qt.Key_Home:self.fit()
+        elif key in [Qt.Key_Return,Qt.Key_Enter]:self.choose([e for value,e in self.points if self.begin<=value<=self.end]) if self.points else None
+        else:super().keyPressEvent(event);return
+        event.accept()
     def wheelEvent(self,event):
         if event.modifiers()&Qt.ShiftModifier or abs(event.angleDelta().x())>abs(event.angleDelta().y()):self.pan(-((event.angleDelta().x() or event.angleDelta().y())/120)*(self.end-self.begin)*.15)
         else:self.zoom(1.35**(event.angleDelta().y()/120),self.date_at(event.position().x()))
@@ -128,7 +144,9 @@ class TimelineCanvas(QWidget):
             item=QListWidgetItem(e['name']+' · '+self.cal.display(e['start']));item.setData(Qt.UserRole,e['id']);item.setToolTip(self.host.preview_html(e['id']));ls.addItem(item)
         def open_current():
             if ls.currentItem():self.activated.emit(ls.currentItem().data(Qt.UserRole));d.accept()
-        ls.itemDoubleClicked.connect(lambda _:open_current());layout.addWidget(primary(tr('Öffnen'),open_current));d.resize(520,360);d.exec()
+        ls.itemDoubleClicked.connect(lambda _:open_current());ls.itemActivated.connect(lambda _:open_current());
+        if ls.count():ls.setCurrentRow(0)
+        layout.addWidget(primary(tr('Öffnen'),open_current));d.resize(520,360);d.exec()
 
 class TimelinePanel(QWidget):
     def __init__(self,host):

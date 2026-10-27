@@ -53,3 +53,28 @@ Der Windows-Release-Workflow führt dieselben Tests unter Windows mit der native
 23 automatisierte Tests unter Linux mit echtem Qt (offscreen) bestanden. Zusätzlich Starttest der Anwendung mit Beispielprojekt, Speichern/Wiederöffnen und PDF. Kalender-Inversrechnung deckt negative Daten, verschiedene Epochen, Kalender mit/ohne Jahr null, ungleiche Monate und Schaltregeln ab. Timeline prüft verkleinerten Wertebereich, horizontales Verschieben, Cluster und echte Datumswerte. Preset-Tests prüfen strikte Ablehnung von Eintragsdaten auf allen Ebenen, Aktivierung ohne Einträge, ID-Erhalt beim Reaktivieren, Vorlagenexport und Datenerhalt beim Löschen. Welt-Leseansicht und kategoriebasierte Dropdown-IDs sind geprüft. Ein tatsächlich gerendertes PDF bleibt auf der ersten Seite weiß, auch mit dunklem Theme und altem blauem Absatzhintergrund.
 
 Die Windows-Pipeline führt dieselben Qt-Tests aus, startet die gebaute Anwendung, installiert den Installer still, prüft Startmenü-Ziel und beide Dateizuordnungen und startet anschließend die installierte Anwendung im Projektspeicher/PDF-Test. Veröffentlichung erfolgt erst nach erfolgreichen Schritten. Keine Aussage über ausbleibende Antivirus- oder SmartScreen-Warnungen: Der Build ist ohne vertrauenswürdiges Herausgeberzertifikat unsigniert.
+
+## Version 0.5 – M12/M13 und Cover
+
+**45 automatisierte Tests unter Linux bestanden**; zusätzlich 2 Layout-/Kontrasttests bei `QT_SCALE_FACTOR=1.5` und der erweiterte Starttest mit geöffneter PDF-Vorschau. Die Windows-Pipeline führt die vollständige Suite, die Skalierungsprüfung sowie die Tests der gebauten und installierten Anwendung aus.
+
+Neu geprüft:
+
+- Mehrere historische Projektstände, Begrenzung der Aufbewahrung, Vermeidung identischer Folgestände und Prüfsummenprüfung beim Wiederherstellen.
+- Migration fester v1-/v2-Dateien, Erhalt unbekannter Metadaten und bytegenaue Originalkopie vor Schreiben einer migrierten Datei.
+- Ablehnung beschädigter Archive, veränderter Ressourcen/Projektbeschreibungen, doppelter IDs und unbekannter künftiger Versionen.
+- Projektsperre zwischen zwei Fenstern und erneutes Öffnen nach Freigabe; Übernahme einer Sperre nach tatsächlichem Prozessende ohne reguläre Freigabe.
+- Fehlgeschlagene Sicherung vor Migration erhält das aktuell geöffnete Projekt; abgebrochenes Speichern erhält Originaldatei und ungespeicherte Änderungen.
+- Hintergrundsicherung enthält einen stabilen Schnappschuss, während GUI-Ereignisse weiter verarbeitet werden.
+- Wiederherstellung öffnet eine Kopie mit neuer Projektkennung und überschreibt keine Quelldatei.
+- Ressourcenerkennung schützt Cover, archivierte Werte und unbekannte Feldinhalte; fehlende Verweise und Ressourcen werden erkannt.
+- Tatsächlich erzeugte PDF-Dateien: zwei Cover plus Manuskript ergeben drei Seiten; das Druckdokument enthält eine Seite ohne Cover. Auswahl nur eines Covers ergibt zwei Seiten. Bild- und Textinhalt werden ausgelesen.
+- Abbrechen des Coverdialogs verwirft neue, unbenutzte Bilder. Großer Bildimport begrenzt Auflösung und vermeidet identische Duplikate.
+- Große Textänderungen werden vor Speichern und Tab-Schließen vollständig übernommen.
+- Welt-Leseansichten werden aktualisiert, die Schreibposition des Manuskripts bleibt erhalten.
+- Tastatursteuerung, 1000×700-Fenster, scrollbar angeordnete Formatleiste und Textkontraste in allen Themes/Akzenten.
+- Lasttest mit 5.000 Welt-Einträgen und 5.000 Timeline-Ereignissen: Suchindex, Navigation, Speichern, Wiederöffnen, Timeline und Spurzuordnung. In dieser Linux-Umgebung rund 0,4 Sekunden für den gemessenen Testabschnitt; kein allgemeines Leistungsversprechen.
+
+Der Starttest der veröffentlichten EXE lädt das alte eingebettete Beispiel in Format v2, speichert es erneut, prüft die Sicherungshistorie, exportiert beide Cover in ein PDF, liest dessen Seitenzahl mit QtPdf und öffnet/schließt die echte QtPdfWidgets-Vorschau. Die Installer-Prüfung kontrolliert weiterhin Startmenü-Eintrag, Projekt-/Preset-Dateizuordnungen und Start der installierten Anwendung.
+
+Offene manuelle Abnahmen: Screenreader mit realen Hilfsmitteln, Mehrmonitor-/DPI-Wechsel, längere Schreibsitzungen auf verschiedener Windows-Hardware sowie physischer Druck. Die genaue Untergliederung und priorisierte Abnahmeliste stehen in `MEILENSTEINE.md`.

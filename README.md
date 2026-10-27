@@ -26,6 +26,37 @@ Neutrale dunkle Navigation, helle Papierfläche, zurückhaltende Symbolleiste un
 
 ![Storynator Dark Mode – Ozean](Vorschau-Dark.png)
 
+## Neu in Version 0.5 – Alltag, Sicherungen und Cover
+
+Die umgesetzten Unterpunkte und die noch offenen manuellen Abnahmen stehen in [MEILENSTEINE.md](MEILENSTEINE.md).
+
+- **Projekt → Projekt & Buchcover:** Zwei Bilder getrennt hochladen. Sie werden eingebettet; das Projektcover erscheint zusätzlich in der Navigation. Im PDF-Dialog lassen sich beide Cover getrennt aktivieren. Die Reihenfolge ist Projektcover, Buchcover, Manuskript. „PDF-Vorschau · mit Cover“ zeigt das tatsächliche Ergebnis. **Druckvorschau und Drucken enthalten keine Cover.**
+- **Projekt → Sicherungen & Wiederherstellung:** Datierte Stände mit Vorschau, „Jetzt sichern“, Export und Wiederherstellen als neue, ungespeicherte Kopie. Das ursprüngliche Projekt bleibt erhalten. Mit „Alle Projekte anzeigen“ sind auch Stände anderer Projekte erreichbar.
+- **Projekt → Sicherungseinstellungen:** Intervall und Anzahl der Stände wählen. Standard: 60 Sekunden und 20 Stände je Projekt. Automatische Sicherungen laufen im Hintergrund; vor Überschreiben wird zusätzlich der bisherige Dateistand gesichert.
+- **Projekt → Projekt prüfen & bereinigen:** Fehlende Verweise, ungültige Daten und Ressourcenprobleme auflisten. Nur ausgewählte unbenutzte Ressourcen werden nach Bestätigung gelöscht; vorher entsteht eine Sicherung. Archivierte Feldwerte, Cover und unbekannte Feldinhalte werden berücksichtigt.
+- Bereits geöffnete Projektdateien sind gegen gleichzeitiges Bearbeiten desselben Pfads gesperrt. Separate Kopien und andere Geräte sind unabhängige Dateien.
+- **Dateiformat v2:** Alte v1-Dateien werden im Speicher übernommen. Vor dem ersten Schreiben im neuen Format wird das Original als `.before-v2-<Prüfsumme>.bak` daneben gesichert. Die Originalkopie ist über „Projekt öffnen“ auswählbar. Ältere Programmversionen können v2 nicht lesen. Unbekannte zukünftige Formatversionen werden nicht überschrieben.
+- Textkontraste und Fokusmarkierungen sind verbessert. Die Formatleiste scrollt bei wenig Platz; die Schreibhilfe blendet sich in schmalen Fenstern aus. Große Dokumente werden verzögert serialisiert, beim Speichern und Tab-Schließen vollständig übernommen. Bilder werden beim Import auf maximal 4096 Pixel Kantenlänge begrenzt; Originaldateien bleiben unverändert.
+- Die Suche verwendet einen Index. Geöffnete Welt-Leseansichten, Timeline und Verknüpfungsnamen aktualisieren sich nach Änderungen. Im Suchfenster lassen sich Begriffe weiter eingrenzen; maximal 500 Treffer werden gleichzeitig angezeigt.
+
+### Tastatur
+
+| Aktion | Kürzel |
+|---|---|
+| Editor / Timeline / Welt | Strg+1 / Strg+2 / Strg+3 |
+| Projektweite Suche | Strg+K |
+| Neues Kapitel | Strg+Umschalt+N |
+| Welt-Eintrag bearbeiten / fertig | Strg+E |
+| Tab schließen | Strg+W |
+| Nächster / vorheriger Tab | Strg+Tab / Strg+Umschalt+Tab |
+| Speichern / Speichern unter | Strg+S / Strg+Umschalt+S |
+| Druck- und PDF-Dialog | Strg+P |
+| Fokusmodus | F11 |
+| Timeline verschieben / zoomen / Gesamtansicht | Pfeile / Plus, Minus / Pos1 |
+| Sichtbare Timeline-Ereignisse auswählen | Eingabe bei fokussiertem Zeitstrahl |
+
+Tab bewegt den Fokus auch aus dem Texteditor heraus. Navigations- und Auswahllisten öffnen Einträge mit Eingabe. Unerwartete Fehler werden ausschließlich lokal in `errors.log` protokolliert; es werden keine Fehlerberichte übertragen.
+
 ## Neu in Version 0.4
 
 - Timeline: schmale, überlappende Zeitalter oben; Ereignisse als Punkte darunter. Nahe Punkte werden nach Bildschirmabstand zu zählbaren Gruppen zusammengefasst. Klick öffnet eine getrennt auswählbare Ereignisliste. Zeitspannen bleiben als Linien unter dem Ereignisband sichtbar und anklickbar.
@@ -69,7 +100,9 @@ Neutrale dunkle Navigation, helle Papierfläche, zurückhaltende Symbolleiste un
 
 Speichern schreibt im Zielverzeichnis eine temporäre Datei, synchronisiert deren Inhalt und ersetzt die Zieldatei atomar. Ein Fehler vor dem Austausch lässt die letzte gültige Datei erhalten. Das ist keine Garantie gegen Hardwaredefekte oder alle Netzwerkdateisystemfehler; eigene Projektkopien bleiben sinnvoll.
 
-Alle 30 Sekunden gibt es bei Änderungen eine lokale Wiederherstellungskopie im Qt-Anwendungsdatenverzeichnis (typischerweise `%APPDATA%/Storynator/`). Beim nächsten Start wird eine Wiederherstellung angeboten. Sie ersetzt kein bewusstes Speichern und enthält maximal den Stand des letzten Intervalls. Nach regulärem Speichern oder bestätigtem Verwerfen wird sie entfernt. Eine App-Instanz gleichzeitig verwenden: Die Wiederherstellungsdatei ist derzeit anwendungsweit.
+Standardmäßig alle 60 Sekunden werden geänderte Projekte automatisch gesichert. Die Dateien liegen im Qt-Anwendungsdatenordner, auf Windows typischerweise unter `%APPDATA%/Storynator/Storynator/`: `backups/<Projektkennung>/` enthält die Historie, `sessions/` enthält Wiederherstellungskopien laufender Sitzungen. Der tatsächliche Pfad folgt der Qt-/Windows-Konfiguration. Die Historie bleibt auch nach normalem Schließen erhalten. Beim nächsten Start werden Sicherungen unerwartet beendeter Sitzungen angeboten; aktive andere Sitzungen werden ausgelassen. Diese lokalen Dateien gehören nicht zur portablen Hauptdatei. Für die Übertragung einen Stand exportieren oder die Hauptdatei kopieren.
+
+Fehler beim Schreiben einer automatischen Sicherung werden in der Statusleiste und lokalem Fehlerprotokoll gemeldet. Schlägt die zusätzliche Sicherung nach erfolgreichem manuellem Speichern fehl, wird dies ausdrücklich angezeigt; die gespeicherte Projektdatei bleibt gültig. Eigene externe Sicherungskopien bleiben sinnvoll.
 
 ## Technischer Aufbau
 
@@ -78,7 +111,9 @@ Alle 30 Sekunden gibt es bei Änderungen eine lokale Wiederherstellungskopie im 
 - `i18n.py`: Offline-Sprachkatalog und Qt-Übersetzungen.
 - `printing.py`: portable Druckeinstellungen und lokale Druckervorgaben.
 - `design.py`: gemeinsames Gestaltungssystem und skalierbare Vektorsymbole.
-- `scripts/build_windows.py`: einzelnes Windows-EXE-Paket; `.github/workflows/windows.yml`: Tests, Build, EXE-Prüfung und Release.
+- `storage.py`, `safety.py`, `tasks.py`: validierte Archive, Migration, Sicherungshistorie, Integritätsprüfung und Hintergrundsicherungen.
+- `media.py`, `project_ui.py`: Bildimport, Cover und Projektpflege-Dialoge.
+- `scripts/build_windows.py`: Windows-Programmordner und Installer; `.github/workflows/windows.yml`: Tests, Build, EXE-Prüfung und Release.
 - `app.py`: Qt-Oberfläche, Richtexteditor, Kategorievorlagen und Felder, projektweite Suche, Tabs, Timeline, Kalenderdialog, Drucken/PDF.
 - `test_storynator.py`: Integrationstests mit echtem Qt-Editor, Dateiarchiv und echtem PDF-Export.
 
@@ -100,5 +135,5 @@ Dies ist eine funktionierende erste Desktop-Version, keine vollständig ausgerei
 - Datumsfelder haben Texteingabe mit Validierung statt eines grafischen Datumspickers. Monatssortierung erfolgt über die Tabellenreihenfolge; die Monate werden von oben nach unten angelegt.
 - Der Schreibeditor ist eine fortlaufende Schreibfläche; die paginierte Darstellung gibt es in der Druckvorschau. Keine Kopf-/Fußzeilen, Tabellenbearbeitung, DOCX-Import/-Export oder Rechtschreibprüfung.
 - Formatierte Felder lassen sich über dieselbe Werkzeugleiste bearbeiten; Vorlagen haben noch keine visuelle Anordnung von Spalten oder Gruppen.
-- Verknüpfungen besitzen keine Richtungstypen oder Graphansicht. Timeline-Liste und bestehende Welt-Verknüpfungslisten werden bei zwischenzeitlichen Änderungen gegebenenfalls durch Schließen und erneutes Öffnen aktualisiert.
-- Es gibt noch keine separate Startseitenaktion zum Löschen alter Verlaufseinträge, keine Dateisperre für gleichzeitige Bearbeitung und keine mehrstufige Backup-Historie.
+- Verknüpfungen besitzen keine Richtungstypen oder Graphansicht. Ein Wechsel der Auswahlquelle in einer bereits geöffneten Feldvorlage kann ein erneutes Öffnen des Bearbeitungsformulars erfordern.
+- Eine separate Startseitenaktion zum Löschen alter Verlaufseinträge fehlt. Vollständige manuelle Screenreader-, Mehrmonitor- und Windows-Langzeittests stehen weiterhin aus.

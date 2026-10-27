@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "Kompatibilitätsprobe",
+  "documents": [
+    {
+      "id": "chapter-fixed",
+      "name": "Prolog",
+      "html": "<p><b>Erhaltener Text</b></p>"
+    }
+  ],
+  "categories": [],
+  "entries": [],
+  "events": [],
+  "assets": {},
+  "calendar": {
+    "name": "Jahre",
+    "year_zero": false,
+    "epoch": 1,
+    "months": [],
+    "week": [],
+    "format": "{year}",
+    "leaps": []
+  },
+  "future_metadata": {
+    "keep": "unbekannte Felder bleiben erhalten"
+  }
+}

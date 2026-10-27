@@ -4,13 +4,16 @@ from PySide6.QtCore import Qt,QUrl,QSize
 from PySide6.QtGui import QImage,QPixmap,QTextDocument,QIcon,QTextCursor,QTextFormat,QColor
 from PySide6.QtWidgets import QWidget,QLabel,QVBoxLayout,QHBoxLayout,QGridLayout,QFrame,QTextBrowser,QPushButton,QProgressBar,QDialog,QScrollArea,QSizePolicy,QTextEdit
 from core import resolve,render,Calendar
+from media import image_from_asset
+import re
 from design import label,primary,icon,CURRENT
 from i18n import tr
 
 class RichDisplay(QTextBrowser):
     def __init__(self,host,text):
         super().__init__();self.setReadOnly(True);self.setOpenLinks(False);self.setFrameShape(QFrame.NoFrame);self.setStyleSheet('QTextBrowser{border:0;background:transparent;padding:0;}');self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff);self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff);self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
-        for key,value in host.p['assets'].items():self.document().addResource(QTextDocument.ImageResource,QUrl('asset:'+key),QImage.fromData(base64.b64decode(value)))
+        for key in set(re.findall(r'asset:([^\s\"<>]+)',text)):
+            if key in host.p['assets']:self.document().addResource(QTextDocument.ImageResource,QUrl('asset:'+key),image_from_asset(host.p,key,1600))
         self.setHtml(render(host.p,text));self.update_marks();self.anchorClicked.connect(lambda url:host.open_object(url.toString()[6:]) if url.toString().startswith('story:') else None);self.document().documentLayout().documentSizeChanged.connect(lambda _:self.fit_text());self.fit_text()
     def update_marks(self):
         selections=[];block=self.document().begin()
@@ -36,8 +39,9 @@ def linked_button(host,id):
 def image_grid(host,ids):
     box=QWidget();grid=QGridLayout(box);grid.setContentsMargins(0,0,0,0);grid.setSpacing(16)
     for i,key in enumerate(ids):
-        image=QImage.fromData(base64.b64decode(host.p['assets'].get(key,'')));b=QPushButton();b.setMinimumSize(180,145);b.setIcon(QIcon(QPixmap.fromImage(image)));b.setIconSize(QSize(210,170));b.setToolTip(tr('Bild öffnen'));b.setCursor(Qt.PointingHandCursor)
-        def show(checked=False,img=image):
+        image=image_from_asset(host.p,key,300);b=QPushButton();b.setMinimumSize(180,145);b.setIcon(QIcon(QPixmap.fromImage(image)));b.setIconSize(QSize(210,170));b.setToolTip(tr('Bild öffnen'));b.setCursor(Qt.PointingHandCursor)
+        def show(checked=False,key=key):
+            img=image_from_asset(host.p,key,4096)
             d=QDialog(host);d.setWindowTitle(tr('Bild'));outer=QVBoxLayout(d);area=QScrollArea();lab=QLabel();lab.setPixmap(QPixmap.fromImage(img));area.setWidget(lab);outer.addWidget(area);d.resize(min(950,img.width()+45),min(750,img.height()+65));d.exec()
         b.clicked.connect(show);grid.addWidget(b,i//3,i%3)
     return box

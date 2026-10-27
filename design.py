@@ -1,5 +1,6 @@
 """Shared visual language: editorial type, quiet surfaces and vector icons."""
 from pathlib import Path
+from functools import lru_cache
 import re
 from PySide6.QtCore import QSettings
 from i18n import tr
@@ -42,6 +43,10 @@ PATHS={
 
 def icon(name,color=None,size=22):
     color=color or theme_colors(CURRENT['mode'],CURRENT['accent'])['muted']
+    return cached_icon(name,color,size)
+
+@lru_cache(maxsize=256)
+def cached_icon(name,color,size):
     svg=f'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="-1 -1 27 27"><path d="{PATHS.get(name,PATHS["file"])}" fill="none" stroke="{color}" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/></svg>'
     pix=QPixmap(size*2,size*2);pix.fill(Qt.transparent);p=QPainter(pix);QSvgRenderer(QByteArray(svg.encode())).render(p);p.end();pix.setDevicePixelRatio(2);return QIcon(pix)
 
@@ -49,7 +54,7 @@ def label(text,role='body',translate=True):
     w=QLabel(tr(text) if translate else text);w.setProperty('role',role);return w
 
 def tool(name,tip,fn,text=''):
-    b=QToolButton();b.setProperty('iconName',name);b.setIcon(icon(name));b.setIconSize(QSize(19,19));b.setToolTip(tr(tip));b.setCursor(Qt.PointingHandCursor);b.setFocusPolicy(Qt.NoFocus);b.clicked.connect(fn)
+    b=QToolButton();b.setProperty('iconName',name);b.setIcon(icon(name));b.setIconSize(QSize(19,19));b.setToolTip(tr(tip));b.setCursor(Qt.PointingHandCursor);b.setFocusPolicy(Qt.StrongFocus);b.setAccessibleName(tr(text or tip));b.clicked.connect(fn)
     if text:b.setText(tr(text));b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
     return b
 
@@ -159,25 +164,26 @@ def blend(a,b,ratio):
 
 def theme_colors(mode,accent):
     dark=mode=='dark';base,bright=ACCENTS.get(accent,ACCENTS['forest']);paper='#20272f' if dark else '#ffffff';color=bright if dark else base
-    return {'window':'#151b22' if dark else '#f3f5f8','paper':paper,'text':'#e2e8ef' if dark else '#263442','muted':'#a3afbd' if dark else '#748292','border':'#35414e' if dark else '#dfe5ec','accent':color,'selected':blend(paper,color,.18 if dark else .11),'sidebar':'#17212c'}
+    return {'window':'#151b22' if dark else '#f3f5f8','paper':paper,'text':'#e2e8ef' if dark else '#263442','muted':'#a3afbd' if dark else '#647382','border':'#35414e' if dark else '#dfe5ec','accent':color,'selected':blend(paper,color,.18 if dark else .11),'sidebar':'#17212c'}
 
 def apply_theme(app,mode=None,accent=None):
     settings=QSettings('Storynator','Storynator');mode=mode or settings.value('appearance/mode','light');accent=accent or settings.value('appearance/accent','forest');mode=mode if mode in ('light','dark') else 'light';accent=accent if accent in ACCENTS else 'forest';CURRENT.update(mode=mode,accent=accent);colors=theme_colors(mode,accent);CURRENT['link']=colors['accent'];base=ACCENTS[accent][0]
     roles={
       'paper':['#fffefa','#fbfcf9'],
       'window':['#f3f4f0','#f7f8f5'],
-      'text':['#283e35','#203c30','#243e32','#303c33','#3c5445','#24452e','#2f5437','#344e35','#163e30'],
-      'muted':['#87948d','#84918a','#687a70','#87948a','#6c7d70','#839080','#647761','#8b9a87'],
+      'text':['#687a70','#283e35','#203c30','#243e32','#303c33','#3c5445','#24452e','#2f5437','#344e35','#163e30'],
+      'muted':['#87948d','#84918a','#87948a','#6c7d70','#839080','#647761','#8b9a87'],
       'border':['#e0e5dd','#e1e5de','#e7e7dd','#e1e7dc','#dbe2d6','#dce4d6','#dae3d3','#b9cbb9','#eef0e9','#e4e9df','#b9cbb0','#c9d3c2'],
       'selected':['#e5eadf','#e9eee4','#dce6d5','#ecf1e7','#e5ecdf','#f0f3ed','#e2e9dc','#dfe8d8','#edf1e7','#e5eddf','#e1e8da','#d2e9dd'],
       'accent':['#607a65','#4d6d50','#2f573b','#597f52','#55794b','#7e9e79','#66885b']}
     replacements={value:colors[role] for role,values in roles.items() for value in values}
     replacements.update({'#365d43':base,'#284c35':QColor(base).darker(115).name(),'#192c26':colors['sidebar'],'#213e2d':colors['sidebar'],'#233b30':'#202e3c','#314c3c':'#324354','#34513e':blend(colors['sidebar'],base,.55),'#2a4636':blend(colors['sidebar'],base,.45),'#243e31':blend(colors['sidebar'],base,.3),'#223d30':blend(colors['sidebar'],base,.25),'#b2c2b7':'#c0cad5','#768f81':'#8294a6','#a9bfb0':'#b6c3cf','#b8c9bc':'#c0cad5','#a9c4b1':'#bdcbd9','#f4f7ef':'#f7f9fc','#f5f5ec':'#f7f9fc','#f7f7ee':'#f7f9fc'})
     style=re.sub(r'#[0-9a-fA-F]{6}',lambda match:replacements.get(match.group(),match.group()),STYLE)
+    style+='\nQPushButton:focus,QToolButton:focus,QTreeWidget:focus,QListWidget:focus { border:2px solid '+colors['accent']+'; }'
     style+='\nQTextBrowser { background:transparent; border:0; } QProgressBar { background:'+colors['selected']+';border:0;border-radius:4px;height:8px; } QProgressBar::chunk { background:'+colors['accent']+';border-radius:4px; }'
     app.setStyle('Fusion');app.setFont(QFont('Segoe UI',10));app.setStyleSheet(style);palette=app.palette()
     for role,key in [(QPalette.Window,'window'),(QPalette.WindowText,'text'),(QPalette.Text,'text'),(QPalette.Base,'paper'),(QPalette.Button,'paper'),(QPalette.ButtonText,'text'),(QPalette.Highlight,'selected'),(QPalette.HighlightedText,'text'),(QPalette.ToolTipBase,'paper'),(QPalette.ToolTipText,'text')]:palette.setColor(role,QColor(colors[key]))
-    palette.setColor(QPalette.Link,QColor(colors['accent']));app.setPalette(palette)
+    palette.setColor(QPalette.Link,QColor(colors['accent']));palette.setColor(QPalette.PlaceholderText,QColor(colors['muted']));app.setPalette(palette)
     for widget in app.allWidgets():
         name=widget.property('iconName')
         if name and hasattr(widget,'setIcon'):widget.setIcon(icon(name,'#ffffff' if widget.property('role')=='primary' else colors['muted']))
