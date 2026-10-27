@@ -108,7 +108,7 @@ def test_timeline_keyboard_and_invalid_dates_are_recoverable(qt,tmp_path):
     from PySide6.QtCore import QEvent
     w=studio(tmp_path);w.p['calendar']['months']=[];w.p['events']=[dict(id=uid(),name='ok',start='100',end='200',kind='Zeitalter',links=[],html='',era=None),dict(id=uid(),name='bad',start='0',end='',kind='Ereignis',links=[],html='',era=None)];canvas=TimelineCanvas(w);assert len(canvas.invalid)==1;before=canvas.end-canvas.begin;canvas.keyPressEvent(QKeyEvent(QEvent.KeyPress,Qt.Key_Plus,Qt.NoModifier));assert canvas.end-canvas.begin<before;w.dirty=False;w.close()
 
-def test_stress_search_archive_and_timeline_10000_objects(qt,tmp_path):
+def test_stress_search_archive_and_timeline_10000_objects(qt,tmp_path,monkeypatch):
     from timeline import TimelineCanvas,era_lanes
     p=new_project();cat=dict(id=uid(),name='People',fields=[]);p['categories']=[cat];p['calendar']['months']=[]
     p['entries']=[dict(id=uid(),name='Person '+str(i),category=cat['id'],html='<p>North kingdom</p>',values={},links=[]) for i in range(5000)]
@@ -116,6 +116,8 @@ def test_stress_search_archive_and_timeline_10000_objects(qt,tmp_path):
     started=time.perf_counter();index=SearchIndex(p);assert len(index.search('person north'))==5000;assert len(index.search('person 4999'))==1;path=tmp_path/'large.storynator';save_project(p,path);assert load_project(path)==p
     w=studio(tmp_path);w.p=p;w.refresh();assert w.nav.topLevelItem(1).child(0).childCount()==5000;canvas=TimelineCanvas(w);canvas.resize(1200,500);assert sum(map(len,canvas.clusters()))==5000;canvas.zoom(100);assert sum(map(len,canvas.clusters()))<100
     eras=[(0,100,dict(id=str(i))) for i in range(5000)];assert era_lanes(eras)[1]==5000
+    import app
+    p['documents'][0]['html']='<a href="story:'+p['entries'][0]['id']+'">Person 0</a>';w.nav.setCurrentItem(w.nav.topLevelItem(1).child(0).child(0));monkeypatch.setattr(app,'ask',lambda *args:'Renamed');w.rename();assert 'Renamed' in p['documents'][0]['html']
     elapsed=time.perf_counter()-started;print(f'10000 objects: search/save/load/timeline {elapsed:.2f}s');assert elapsed<30;w.dirty=False;w.close()
 
 def test_keyboard_navigation_and_small_window(qt,tmp_path):

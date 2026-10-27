@@ -12,8 +12,9 @@ def resolve(p,id): return next((x for x in objects(p) if x['id']==id),None)
 def embed(p,path):
     data=Path(path).read_bytes(); key=uid()+Path(path).suffix.lower(); p['assets'][key]=base64.b64encode(data).decode(); return key
 
-def render(p,text):
-    lookup={o['id']:o for o in objects(p)}
+def render(p,text,lookup=None):
+    if 'story:' not in text:return text
+    if lookup is None:lookup={o['id']:o for o in objects(p)}
     def sub(match):
         item=lookup.get(match.group(2));name=item['name'] if item else '[Gelöschter Eintrag]';body=match.group(3)
         # Qt writes font, size and emphasis into spans inside the anchor.

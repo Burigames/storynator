@@ -584,14 +584,14 @@ class Main(QMainWindow):
         if not o:return
         name=ask(self,'Umbenennen',o['name'])
         if name:
-            o['name']=name
+            o['name']=name;lookup={item['id']:item for item in objects(self.p)}
             for en in objects(self.p):
-                if 'html' in en:en['html']=render(self.p,en['html'])
+                if 'html' in en:en['html']=render(self.p,en['html'],lookup)
                 for f,v in en.get('values',{}).items():
-                    if isinstance(v,str) and 'story:' in v:en['values'][f]=render(self.p,v)
+                    if isinstance(v,str) and 'story:' in v:en['values'][f]=render(self.p,v,lookup)
             for i in range(self.tabs.count()):
                 page=self.tabs.widget(i)
-                for e in page.findChildren(Rich):e.sync_links({obj['id']:obj for obj in objects(self.p)})
+                for e in page.findChildren(Rich):e.sync_links(lookup)
                 for ls in page.findChildren(QListWidget):
                     for j in range(ls.count()):
                         target=resolve(self.p,ls.item(j).data(Qt.UserRole))
