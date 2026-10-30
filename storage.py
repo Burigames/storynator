@@ -1,16 +1,17 @@
 """Versioned, validated and atomic project archives. Never overwrite during loading."""
 import base64,copy,hashlib,json,os,re,tempfile,uuid,zipfile
 from pathlib import Path
-CURRENT_VERSION=2
+CURRENT_VERSION=3
 MAX_ARCHIVE_BYTES=2*1024**3
 MAX_JSON_BYTES=64*1024**2
 
 def migrate(project):
     if not isinstance(project,dict):raise ValueError('Projektinhalt ist kein gültiges Objekt.')
     p=copy.deepcopy(project);version=p.get('version')
-    if type(version) is not int or version not in (1,2):raise ValueError('Unbekannte Dateiversion. Bitte eine passende Storynator-Version verwenden.')
+    if type(version) is not int or version not in (1,2,3):raise ValueError('Unbekannte Dateiversion. Bitte eine passende Storynator-Version verwenden.')
     if version==1:
         p['version']=2;p.setdefault('project_id',str(uuid.uuid5(uuid.NAMESPACE_URL,'storynator:'+next((o['id'] for group in ['documents','entries','events'] for o in p.get(group,[]) if o.get('id')),json.dumps(p,sort_keys=True)))));p.setdefault('covers',{'project':'','book':''})
+    if p['version']==2:p['version']=3
     return p
 
 def validate(p):
@@ -36,6 +37,23 @@ def validate(p):
                 if group in ['entries','events'] and (not isinstance(obj.get('links'),list) or any(not isinstance(v,str) for v in obj['links'])):raise ValueError('Ungültige Verknüpfungsliste.')
                 if group=='entries' and (not isinstance(obj.get('category'),str) or not isinstance(obj.get('values'),dict)):raise ValueError('Ungültige Welt-Feldwerte.')
                 if group=='events' and (not all(isinstance(obj.get(k,''),str) for k in ['start','end','kind']) or obj.get('era') is not None and not isinstance(obj.get('era'),str)):raise ValueError('Ungültige Zeitangabe.')
+    docs={o['id']:o for o in p['documents']}
+    for doc in docs.values():
+        if doc.get('kind','chapter') not in ['part','chapter','scene'] or doc.get('status','draft') not in ['draft','revision','done']:raise ValueError('Ungültiger Manuskripttyp oder Status.')
+        parent=doc.get('parent');ancestors={doc['id']}
+        while parent:
+            if parent not in docs or parent in ancestors or len(ancestors)>64 or docs[parent].get('kind')=='scene':raise ValueError('Ungültige Manuskriptstruktur.')
+            ancestors.add(parent);parent=docs[parent].get('parent')
+        for note in doc.get('annotations',[]):
+            if not isinstance(note,dict) or note.get('kind') not in ['comment','bookmark'] or not isinstance(note.get('text'),str) or not isinstance(note.get('id'),str) or any(type(note.get(k)) is not int or note[k]<0 for k in ['start','end']) or note['end']<note['start']:raise ValueError('Ungültige Textnotiz.')
+        for item in doc.get('history',[]):
+            if not isinstance(item,dict) or not isinstance(item.get('id'),str) or not isinstance(item.get('name'),str) or not isinstance(item.get('content'),dict) or not isinstance(item['content'].get('html'),str):raise ValueError('Ungültiger Kapitelstand.')
+    for relationship_type in p.get('relationship_types',[]):
+        if not isinstance(relationship_type,dict) or not all(isinstance(relationship_type.get(key),str) for key in ['id','name']) or relationship_type['id'] in seen:raise ValueError('Ungültiger Beziehungstyp.')
+        seen.add(relationship_type['id'])
+    for relation in p.get('relationships',[]):
+        if not isinstance(relation,dict) or not all(isinstance(relation.get(key,''),str) for key in ['id','source','target','type','description','start','end']) or not relation.get('id') or relation['id'] in seen:raise ValueError('Ungültige Beziehung.')
+        seen.add(relation['id'])
     if not isinstance(p.get('calendar'),dict) or not isinstance(p.get('assets'),dict):raise ValueError('Kalender oder Ressourcen fehlen.')
     if not isinstance(p.get('covers'),dict) or any(not isinstance(v,str) for v in p['covers'].values()):raise ValueError('Ungültige Cover-Zuordnung.')
     for key,value in p['assets'].items():

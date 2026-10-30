@@ -81,9 +81,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $tag = "v0.5.$env:GITHUB_RUN_NUMBER"
+          $tag = "v0.6.$env:GITHUB_RUN_NUMBER"
           Get-FileHash dist/Storynator-Setup.exe,dist/Storynator-Portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content dist/SHA256SUMS.txt
-          $notes = "Storynator 0.5: M12/M13 mit datierter Sicherungshistorie, Wiederherstellung als Kopie, Projektsperren, Formatmigration mit Originalkopie, Integritaetspruefung und Ressourcenbereinigung. Verbesserte Tastaturbedienung, Kontraste, kleine Fenster, Hintergrundsicherungen und Leistung. Projekt- und Buchcover erscheinen ausschliesslich im PDF, nicht beim Drucken. Alte Projekte werden unter Erhalt einer Sicherung in Format v2 uebernommen. Windows-Tests, 150-Prozent-Skalierung, EXE-Start und Installation geprueft. Die Anwendung ist weiterhin unsigniert; SmartScreen kann warnen. Setup ausfuehren, kein Python erforderlich."
+          $notes = "Storynator 0.6: M14/M15 mit Teilen, Kapiteln, Szenen, Drag-and-drop, Status, Suchen/Ersetzen, Kommentaren, Lesezeichen, Kapitelstaenden, Schreibzielen und Offline-Rechtschreibung Deutsch/Englisch. Weltvorlagen mit Gruppen, Spalten, Pflichtfeldern und Auswahlfiltern; Beziehungstypen, Rueckverweise, Geltungszeiten und Graph. Favoriten, gespeicherte Ansichten, Duplikate und Kategorieuebertragung mit Feldarchiv. Projektformat v3: alte Dateien werden vor Uebernahme gesichert. Projekt-/Buchcover weiterhin nur im PDF. Windows-Tests, Skalierung, EXE-Start mit Woerterbuechern und Installation geprueft. Setup ausfuehren, kein Python erforderlich. Weiterhin unsigniert."
           gh release create $tag dist/Storynator-Setup.exe dist/Storynator-Portable.zip dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
       - uses: actions/upload-artifact@v4
         if: success()

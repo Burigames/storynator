@@ -16,7 +16,7 @@ def file_digest(path):
 def migration_copy(path):
     path=Path(path)
     if archive_version(path)==CURRENT_VERSION:return None
-    digest=file_digest(path)[:12];target=path.with_name(path.name+'.before-v2-'+digest+'.bak')
+    digest=file_digest(path)[:12];target=path.with_name(path.name+'.before-v'+str(CURRENT_VERSION)+'-'+digest+'.bak')
     if not target.exists():
         with target.open('xb') as out, path.open('rb') as src:shutil.copyfileobj(src,out);out.flush();os.fsync(out.fileno())
     if file_digest(target)!=file_digest(path):raise OSError('Migrationssicherung konnte nicht geprüft werden.')
@@ -103,6 +103,15 @@ def project_report(p,check_image=None):
     for c in p['categories']:
         for f in c['fields']:
             if f.get('source_category') and f['source_category'] not in cats:add('Fehlende Quellkategorie',c['name'],f['name'],c['id'])
+    types={t['id'] for t in p.get('relationship_types',[])}
+    for relation in p.get('relationships',[]):
+        for target in [relation['source'],relation['target']]:
+            if target not in lookup:add('Fehlender Verweis','Beziehung',target)
+        if relation['type'] not in types:add('Fehlender Beziehungstyp','Beziehung',relation['type'])
+        try:
+            if relation.get('start'):cal.span(relation['start'],relation.get('end',''))
+            elif relation.get('end'):raise ValueError('Anfang fehlt')
+        except (ValueError,KeyError,IndexError):add('Ungültiges Datum','Beziehung',relation.get('start',''))
     used=used_assets(p)
     for key in used-p['assets'].keys():add('Fehlendes Bild','Projekt',key)
     for key,value in p['assets'].items():

@@ -51,7 +51,7 @@ def cached_icon(name,color,size):
     pix=QPixmap(size*2,size*2);pix.fill(Qt.transparent);p=QPainter(pix);QSvgRenderer(QByteArray(svg.encode())).render(p);p.end();pix.setDevicePixelRatio(2);return QIcon(pix)
 
 def label(text,role='body',translate=True):
-    w=QLabel(tr(text) if translate else text);w.setProperty('role',role);return w
+    w=QLabel(tr(text) if translate else text);w.setTextFormat(Qt.PlainText);w.setProperty('role',role);return w
 
 def tool(name,tip,fn,text=''):
     b=QToolButton();b.setProperty('iconName',name);b.setIcon(icon(name));b.setIconSize(QSize(19,19));b.setToolTip(tr(tip));b.setCursor(Qt.PointingHandCursor);b.setFocusPolicy(Qt.StrongFocus);b.setAccessibleName(tr(text or tip));b.clicked.connect(fn)

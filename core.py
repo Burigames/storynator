@@ -3,7 +3,7 @@ from pathlib import Path
 
 def uid(): return str(uuid.uuid4())
 def new_project(name='Meine Geschichte'):
-    return dict(version=2,project_id=uid(),covers={'project':'','book':''},name=name,documents=[dict(id=uid(),name='Kapitel 1',html='')],categories=[],entries=[],events=[],assets={},calendar=dict(name='Weltzeit',year_zero=False,epoch=1,months=[dict(name='Erster Mond',days=30),dict(name='Zweiter Mond',days=30)],week=['Ersttag','Zweittag','Dritttag','Vierttag','Fünfttag'],format='{day}. {month} {year}',units={'year':'Jahr','month':'Monat','day':'Tag'},leaps=[]))
+    return dict(version=3,project_id=uid(),covers={'project':'','book':''},name=name,documents=[dict(id=uid(),name='Kapitel 1',html='')],categories=[],entries=[],events=[],assets={},calendar=dict(name='Weltzeit',year_zero=False,epoch=1,months=[dict(name='Erster Mond',days=30),dict(name='Zweiter Mond',days=30)],week=['Ersttag','Zweittag','Dritttag','Vierttag','Fünfttag'],format='{day}. {month} {year}',units={'year':'Jahr','month':'Monat','day':'Tag'},leaps=[]))
 
 from storage import save_project,load_project
 
@@ -29,7 +29,11 @@ def render(p,text,lookup=None):
     return re.sub(r'(<a[^>]*href="story:([^"\s]+)"[^>]*>)(.*?)(</a>)',sub,text,flags=re.S)
 
 def references(p,id):
-    return [o['name'] for o in objects(p) if o['id']!=id and (o.get('era')==id or id in o.get('links',[]) or id in json.dumps(o.get('values',{})) or ('story:'+id) in o.get('html',''))]
+    result=[o['name'] for o in objects(p) if o['id']!=id and (o.get('era')==id or id in o.get('links',[]) or id in json.dumps(o.get('values',{})) or ('story:'+id) in o.get('html',''))]
+
+    for relation in p.get('relationships',[]):
+        if id in [relation['source'],relation['target']]:result.append('Beziehung: '+(resolve(p,relation['source']) or {}).get('name','?')+' → '+(resolve(p,relation['target']) or {}).get('name','?'))
+    return result
 
 class Calendar:
     def __init__(self,c): self.c=c

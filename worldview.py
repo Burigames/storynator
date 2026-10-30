@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt,QUrl,QSize
 from PySide6.QtGui import QImage,QPixmap,QTextDocument,QIcon,QTextCursor,QTextFormat,QColor
 from PySide6.QtWidgets import QWidget,QLabel,QVBoxLayout,QHBoxLayout,QGridLayout,QFrame,QTextBrowser,QPushButton,QProgressBar,QDialog,QScrollArea,QSizePolicy,QTextEdit
 from core import resolve,render,Calendar
+from worldmodel import backlinks,relations_for,missing_required
+from worldlayout import fields_layout
 from media import image_from_asset
 import re
 from design import label,primary,icon,CURRENT
@@ -71,9 +73,30 @@ class WorldReader(QWidget):
         top=QHBoxLayout();titles=QVBoxLayout();titles.addWidget(label(category['name'].upper(),'eyebrow',False));heading=label(entry['name'],'title',False);heading.setObjectName('entryHeading');titles.addWidget(heading);top.addLayout(titles);top.addStretch();top.addWidget(primary(tr('Bearbeiten'),edit,'edit'));outer.addLayout(top)
         if entry.get('html'):
             card=QFrame();card.setObjectName('card');layout=QVBoxLayout(card);layout.setContentsMargins(24,20,24,22);layout.addWidget(label(tr('Beschreibung'),'eyebrow'));layout.addWidget(RichDisplay(host,entry['html']));outer.addWidget(card)
-        for f in category['fields']:
-            card=QFrame();card.setObjectName('card');layout=QVBoxLayout(card);layout.setContentsMargins(24,19,24,21);layout.setSpacing(10);layout.addWidget(label(f['name'],'eyebrow',False));layout.addWidget(read_field(host,f,entry.get('values',{}).get(f['id'])));outer.addWidget(card)
+        missing=missing_required(host.p,entry)
+        if missing:warning=label(tr('Pflichtfelder fehlen: ')+', '.join(missing));warning.setWordWrap(True);outer.addWidget(warning)
+        outer.addWidget(fields_layout(host,entry,category))
         card=QFrame();card.setObjectName('card');layout=QVBoxLayout(card);layout.setContentsMargins(24,20,24,20);layout.addWidget(label(tr('Verknüpfungen'),'eyebrow'))
         for id in entry.get('links',[]):layout.addWidget(linked_button(host,id))
         if not entry.get('links'):layout.addWidget(label(tr('Noch keine Verknüpfungen.'),'muted'))
-        outer.addWidget(card);outer.addStretch()
+        outer.addWidget(card)
+        from world_ui import toggle_favorite,duplicate_dialog,TransferDialog,RelationshipDialog,GraphDialog
+        actions=QGridLayout()
+        for i,(text,callback) in enumerate([('Favorit umschalten',lambda:toggle_favorite(host,entry['id'])),('Duplizieren',lambda:duplicate_dialog(host,entry['id'])),('Kategorie wechseln',lambda:TransferDialog(host,entry['id']).exec()),('Beziehungen',lambda:RelationshipDialog(host,entry['id']).exec()),('Beziehungsgraph',lambda:GraphDialog(host,entry['id']).exec())]):
+            button=QPushButton(tr(text));button.clicked.connect(callback);actions.addWidget(button,i//3,i%3)
+        outer.addLayout(actions)
+        related=relations_for(host.p,entry['id']);incoming=backlinks(host.p,entry['id'])
+        if related or incoming:
+            card=QFrame();card.setObjectName('card');layout=QVBoxLayout(card);layout.setContentsMargins(24,20,24,20);layout.addWidget(label(tr('Beziehungen & Rückverweise'),'eyebrow'))
+            for relation,name,target,is_incoming in related:
+                layout.addWidget(label(name,translate=False));layout.addWidget(linked_button(host,target))
+                if relation.get('description'):text=label(relation['description'],translate=False);text.setWordWrap(True);layout.addWidget(text)
+                if relation.get('start'):layout.addWidget(label(relation['start']+' — '+relation.get('end',''),translate=False))
+            for obj in incoming:layout.addWidget(linked_button(host,obj['id']))
+            outer.addWidget(card)
+        for archive in entry.get('field_archive',[]):
+            card=QFrame();card.setObjectName('card');layout=QVBoxLayout(card);layout.addWidget(label(tr('Frühere Kategoriewerte')+' · '+archive['name'],'eyebrow',False))
+            for field in archive['fields']:
+                if field['id'] in archive['values']:layout.addWidget(label(field['name'],translate=False));layout.addWidget(read_field(host,field,archive['values'][field['id']]))
+            outer.addWidget(card)
+        outer.addStretch()

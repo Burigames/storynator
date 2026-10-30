@@ -30,7 +30,7 @@ def test_version1_migration_is_lossless_and_backup_exact(tmp_path):
     with zipfile.ZipFile(path,'w') as z:
         z.writestr('project.json',json.dumps({**p,'assets':{}}))
         for key,value in p['assets'].items():z.writestr('assets/'+key,base64.b64decode(value))
-    before=path.read_bytes();q=load_project(path);assert q['version']==2;assert path.read_bytes()==before;assert q['documents']==p['documents'];assert q['assets']==p['assets'];assert load_project(path)['project_id']==q['project_id']
+    before=path.read_bytes();q=load_project(path);assert q['version']==CURRENT_VERSION;assert path.read_bytes()==before;assert q['documents']==p['documents'];assert q['assets']==p['assets'];assert load_project(path)['project_id']==q['project_id']
     backup=migration_copy(path);assert backup.read_bytes()==before;assert migration_copy(path)==backup
     save_project(q,path);assert migration_copy(path) is None;assert backup.read_bytes()==before;assert load_project(path)==q
 
@@ -141,7 +141,7 @@ def test_theme_text_contrast_and_focus_names(qt,tmp_path):
 def test_fixed_format_fixtures_remain_compatible(version,tmp_path):
     raw=(Path(__file__).parent/'tests'/'fixtures'/f'project-v{version}.json').read_bytes();path=tmp_path/'fixture.storynator'
     with zipfile.ZipFile(path,'w') as z:z.writestr('project.json',raw)
-    p=load_project(path);assert p['version']==2;assert p['future_metadata']['keep']=='unbekannte Felder bleiben erhalten';assert '<b>Erhaltener Text</b>' in p['documents'][0]['html'];save_project(p,path);assert load_project(path)==p
+    p=load_project(path);assert p['version']==CURRENT_VERSION;assert p['future_metadata']['keep']=='unbekannte Felder bleiben erhalten';assert '<b>Erhaltener Text</b>' in p['documents'][0]['html'];save_project(p,path);assert load_project(path)==p
 
 def test_stale_lock_from_crashed_process_can_be_reclaimed(tmp_path):
     import subprocess,sys

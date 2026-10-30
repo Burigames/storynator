@@ -45,8 +45,16 @@ def validate(spec):
         fields=cat.get('fields',[])
         if not isinstance(fields,list) or len(fields)>100:raise ValueError('Zu viele oder ungültige Felder.')
         for f in fields:
-            if not isinstance(f,dict) or set(f)-{'name','type','options','min','max','step','source_category'}:raise ValueError('Ungültiges Feld. Inhalte und Code sind nicht erlaubt.')
+            if not isinstance(f,dict) or set(f)-{'name','type','options','min','max','step','source_category','group','column','required','help','source_filter'}:raise ValueError('Ungültiges Feld. Inhalte und Code sind nicht erlaubt.')
             if not isinstance(f.get('name'),str) or not f['name'].strip() or not isinstance(f.get('type'),str) or f.get('type') not in FIELD_TYPES:raise ValueError('Unbekannter Feldtyp oder fehlender Name.')
+            for setting in ['group','help']:
+                if setting in f and not isinstance(f[setting],str):raise ValueError('Ungültige Feldbeschreibung.')
+            if 'column' in f and (type(f['column']) is not int or f['column'] not in [0,1]):raise ValueError('Ungültige Feldspalte.')
+            if 'required' in f and type(f['required']) is not bool:raise ValueError('Ungültiges Pflichtfeld.')
+            if 'source_filter' in f:
+                rule=f['source_filter']
+                if not isinstance(rule,dict) or set(rule)-{'field','field_index','op','value'} or rule.get('op') not in ['eq','contains'] or not isinstance(rule.get('value'),str):raise ValueError('Ungültiger Auswahlfilter.')
+                if rule.get('field') not in [None,'name'] or 'field_index' in rule and (type(rule['field_index']) is not int or rule['field_index']<0):raise ValueError('Ungültiger Filterfeld-Verweis.')
             if 'options' in f and (not isinstance(f['options'],list) or any(not isinstance(o,str) for o in f['options'])):raise ValueError('Auswahloptionen müssen Texte sein.')
             if 'source_category' in f and not isinstance(f['source_category'],str):raise ValueError('Ungültige Quellkategorie.')
             for number in ['min','max','step']:
@@ -58,6 +66,12 @@ def validate(spec):
     for cat in cats:
         for f in cat.get('fields',[]):
             if f.get('source_category') and (f['source_category'] not in keys or f['type'] not in ['Dropdown','Mehrfachauswahl','Verknüpfung']):raise ValueError('Verknüpfte Quellkategorie fehlt im Preset.')
+    for cat in cats:
+        for field in cat.get('fields',[]):
+            rule=field.get('source_filter',{})
+            if 'field_index' in rule:
+                source=next((c for c in cats if c['key']==field.get('source_category')),None)
+                if not source or rule['field_index']>=len(source['fields']):raise ValueError('Filterfeld fehlt im Preset.')
     return copy.deepcopy(spec)
 
 def load(path):
@@ -100,6 +114,13 @@ def enable(project,spec):
             if value.get('source_category'):value['source_category']=mapping[value['source_category']]
             cat['fields'].append(value)
         created.append(cat)
+    for cat in created:
+        for field in cat['fields']:
+            rule=field.get('source_filter')
+            if rule and 'field_index' in rule:
+                source=next(c for c in created if c['id']==field['source_category']);index=rule.pop('field_index')
+                if index>=len(source['fields']):raise ValueError('Filterfeld fehlt im Preset.')
+                rule['field']=source['fields'][index]['id']
     project['categories'].extend(created);state=dict(id=spec['id'],enabled=True,spec=spec,category_ids=list(mapping.values()));project.setdefault('addons',[]).append(state);return state
 
 def disable(project,id):
@@ -141,8 +162,14 @@ def export(project,ids,name):
     for c in cats:
         fields=[]
         for f in c['fields']:
-            value={k:copy.deepcopy(v) for k,v in f.items() if k in {'name','type','options','min','max','step','source_category'}}
-            if value.get('source_category'):value['source_category']=keys[value['source_category']]
+            value={k:copy.deepcopy(v) for k,v in f.items() if k in {'name','type','options','min','max','step','source_category','group','column','required','help','source_filter'}}
+            if value.get('source_category'):
+                source=lookup[value['source_category']];rule=value.get('source_filter')
+                if rule and rule.get('field') not in [None,'name']:
+                    index=next((i for i,field in enumerate(source['fields']) if field['id']==rule['field']),None)
+                    if index is None:raise ValueError('Filterfeld fehlt in der Quellkategorie.')
+                    rule.pop('field');rule['field_index']=index
+                value['source_category']=keys[value['source_category']]
             fields.append(value)
         result.append(dict(key=keys[c['id']],name=c['name'],fields=fields))
     return validate(dict(format=FORMAT,version=1,id=str(uuid.uuid4()),name=name.strip() or 'Mein Kategorien-Preset',description='',categories=result))

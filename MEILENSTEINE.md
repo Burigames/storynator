@@ -1,4 +1,4 @@
-# Storynator 0.5 – M12, M13 und Cover
+# Storynator 0.6 – M12 bis M15 und Cover
 
 ## M12 – Stabile Alltagsversion
 
@@ -52,13 +52,13 @@ Die offenen Punkte betreffen die manuelle Abnahme. Die automatisierten Tests ers
 Sperren gelten für denselben Dateipfad, nicht für separat kopierte Dateien auf anderen Geräten. Sie sind keine verteilte Zusammenarbeit und keine Garantie auf jedem Netzwerkdateisystem. Fehlende Verweise werden nicht automatisch auf andere Objekte umgebogen.
 
 ### 13.3 Formatentwicklung
-- [x] Dateiformat v2 mit Projektkennung, Cover-Zuordnung und Integritätsmanifest.
-- [x] Migration von v1 im Speicher, ohne die Quelldatei beim Laden zu überschreiben.
-- [x] Vor Übernahme/Speichern einer alten Datei bytegenaue Originalkopie neben der Datei: `.before-v2-<Prüfsumme>.bak`.
+- [x] Versioniertes Dateiformat mit Projektkennung, Cover-Zuordnung und Integritätsmanifest; aktuell v3.
+- [x] Migration von v1/v2 im Speicher, ohne die Quelldatei beim Laden zu überschreiben.
+- [x] Vor Übernahme/Speichern einer alten Datei bytegenaue Originalkopie neben der Datei: `.before-v3-<Prüfsumme>.bak`.
 - [x] Unbekannte JSON-Metadaten bleiben erhalten; zukünftige unbekannte Formatversionen werden abgewiesen.
-- [x] Feste v1-/v2-Testdateien und Roundtrip-/Abbruch-/Beschädigungstests.
+- [x] Feste v1-/v2-/v3-Testdateien und Roundtrip-/Abbruch-/Beschädigungstests.
 
-Ältere Storynator-Versionen können Format v2 nicht öffnen. Die Originalkopie bleibt mit der alten Version lesbar und ist über „Projekt öffnen“ auch als `.bak` auswählbar. Sicherungen sind lokal, nicht Teil der portablen Hauptdatei; sie können einzeln exportiert werden.
+Ältere Storynator-Versionen können Format v3 nicht öffnen. Die Originalkopie bleibt mit der alten Version lesbar und ist über „Projekt öffnen“ auch als `.bak` auswählbar. Sicherungen sind lokal, nicht Teil der portablen Hauptdatei; sie können einzeln exportiert werden.
 
 ## Zusatz: Projekt- und Buchcover
 - [x] Zwei getrennte eingebettete Cover in „Projekt → Projekt & Buchcover“.
@@ -84,3 +84,74 @@ Sperren gelten für denselben Dateipfad, nicht für separat kopierte Dateien auf
 | P2 | Langzeittest auf verschiedener realer Windows-Hardware | Offen |
 
 Unabhängig von M12/M13 bleibt die vertrauenswürdige Codesignatur offen. Eine Signatur oder Freiheit von SmartScreen-/Antivirus-Warnungen wird nicht behauptet.
+
+## M14 – Schreiben und Manuskriptorganisation (Version 0.6)
+
+### 14.1 Struktur
+- [x] Teile, Kapitel und Szenen mit dauerhaft gespeicherter Elternzuordnung.
+- [x] Drag-and-drop in der Manuskriptnavigation und im Dialog „Struktur & Status“.
+- [x] Umbenennen und Status Entwurf / Überarbeitung / Fertig, im Editor direkt wählbar.
+- [x] Zyklische Strukturen und Unterdokumente von Szenen verhindern.
+- [x] Beim Löschen einer übergeordneten Einheit bleiben ihre Unterdokumente erhalten.
+- [x] Hierarchische Druckauswahl mit gemeinsam schaltbaren Teilbäumen; Überschrift/Kapiteltext und einzelne Szenen getrennt wählbar.
+- [x] Druck/PDF folgen der Struktur; Teile und Kapitel beginnen auf neuen Seiten, Szenen laufen weiter.
+
+### 14.2 Schreibwerkzeuge
+- [x] Suchen und Ersetzen im aktuellen Dokument oder gesamten Manuskript.
+- [x] Vorschau der Treffer, Groß-/Kleinschreibung und ganze Wörter.
+- [x] Ersetzen bewahrt Richtextformatierung und eingebettete Bildverweise. Verknüpfte Namen bleiben ihren Zielobjekten zugeordnet und werden übersprungen.
+- [x] Wortzahlen je Dokument und Projekt, Projekt- und Tagesziele.
+- [x] Optionale lokale Schreibsitzungen mit Netto-Wortzuwachs und geschätzter aktiver Zeit.
+- [x] Offline-Rechtschreibprüfung Deutsch/Englisch mit mitgelieferten Hunspell-Wörterbüchern.
+- [x] Korrektur eines Wortes an seinen nicht verknüpften Vorkommen; eigenes, entfernbares Projektwörterbuch.
+
+Die Rechtschreibprüfung wird bewusst über „Kapitel prüfen“ gestartet. Sie ist keine Grammatikprüfung und kann gültige Eigennamen/Fachbegriffe melden. Die aktive Zeit wird aus Textänderungen geschätzt; lange Pausen werden nicht vollständig gezählt. Tagesfortschritt summiert positive Nettozuwächse der Sitzungen, kein exakter Anschlagszähler.
+
+### 14.3 Überarbeitung
+- [x] Kommentare an Textauswahl oder Schreibposition und Randnotizen in der Schreibhilfe.
+- [x] Bearbeiten, als erledigt/offen markieren, anspringen und löschen.
+- [x] Lesezeichen mit Namen und Textposition.
+- [x] Textstellen folgen Änderungen; entfernte Passagen bleiben als abgelöste Kommentare erkennbar.
+- [x] Benannte Kapitelstände mit Vorschau, Wiederherstellung und bestätigtem Löschen.
+- [x] Vor Massenersetzung, Rechtschreibkorrektur und Wiederherstellung automatisch den aktuellen Kapitelstand sichern.
+- [x] Kommentare, Formatierung, Bildverweise und Status werden mit Kapitelständen gespeichert. Bildressourcen historischer Stände bleiben vor Bereinigung geschützt.
+
+Kommentare und Lesezeichen sind Bearbeitungsmetadaten und erscheinen nicht im Manuskript-PDF oder Druck. Die Schreibhilfe ist bei kleinen Fenstern/Fokusmodus ausgeblendet; der Dialog bleibt über „Manuskript“ erreichbar.
+
+## M15 – Weltwissen und Beziehungen (Version 0.6)
+
+### 15.1 Vorlagen
+- [x] Feldgruppen und zwei gleich breite Spalten im Lese- und Bearbeitungsmodus.
+- [x] Pflichtfelder und Hilfetexte pro Feld.
+- [x] Fehlende Pflichtwerte beim Fertigstellen melden; unvollständige Entwürfe bleiben speicherbar.
+- [x] Auswahlquelle nach Kategorie und einem zusätzlichen Feldvergleich filtern (gleich / enthält).
+- [x] Bestehende Werte außerhalb des aktuellen Filters sichtbar erhalten.
+- [x] Layout, Pflichtfelder, Hilfetexte und Auswahlfilter beim Preset-Export erhalten und interne Quellfeld-IDs beim Import neu zuordnen.
+
+### 15.2 Beziehungen
+- [x] Eigene Beziehungstypen mit Bezeichnung, optionaler Rückbezeichnung und gerichtet/ungerichtet.
+- [x] Beziehungen erstellen, bearbeiten und löschen; verwendete Typen nicht unbemerkt entfernen.
+- [x] Beschreibung sowie optionaler Anfang/Ende im Projektkalender. Ein Anfang ohne Ende bedeutet „ab diesem Datum“.
+- [x] Automatische Rückverweise aus Text, festen Verknüpfungen und verknüpften Feldern.
+- [x] Beziehungen und Rückverweise auf der Welt-Leseseite anzeigen.
+- [x] Gültigkeit nach Datum im Beziehungsdialog filtern.
+- [x] Löschwarnungen berücksichtigen Beziehungen; gelöschte Ziele bleiben als fehlend erkennbar und werden beim Bearbeiten nicht automatisch neu zugeordnet.
+- [x] Zoom- und verschiebbarer Graph mit Richtungen, getrennten parallelen Verbindungen und anklickbaren Objektnamen.
+
+Der Graph zeigt bis zu 200 Objekte pro Ansicht. Ein Fokusobjekt grenzt auf seine direkten Nachbarn ein; die vollständige Beziehungsliste bleibt unabhängig davon verfügbar. Er ist eine Übersicht, kein automatischer genealogischer oder kartografischer Layout-Editor.
+
+### 15.3 Navigation
+- [x] Favoriten, zuletzt geöffnete Einträge und alphabetische Sortierung.
+- [x] Suchtext, Kategorie, Favoriten und Feldinhalt kombinieren.
+- [x] Benannte Suchansichten speichern, laden und löschen.
+- [x] Einträge mit neuer ID duplizieren; Feldwerte, Bilder und bisherige Verknüpfungsziele behalten. Typisierte Beziehungen werden standardmäßig nicht dupliziert.
+- [x] Kategorieübertragung mit expliziter, typgleicher Feldzuordnung.
+- [x] Vollständige bisherige Feldwerte mit Vorlageninformation im Eintrag archivieren; vor Übertragung zusätzlich eine Projektsicherung erstellen.
+
+Favoriten und Suchansichten gehören zum Projekt. Die Liste zuletzt geöffneter Objekte liegt lokal je Projekt in den Einstellungen. Beziehungen bleiben beim Kategorieübertrag durch die unveränderte Objekt-ID gültig.
+
+## Format und Veröffentlichung ab 0.6
+
+Neue Projekte verwenden Format v3. Dateien v1/v2 werden unter Erhalt von Originalkopien übernommen. Ältere Programmversionen sollen neue Manuskriptstrukturen nicht verändern und können v3 deshalb nicht öffnen. Feste Testdateien aller drei Formate sichern die Rückwärtskompatibilität ab.
+
+Die vorher genannten offenen manuellen Screenreader-/Mehrmonitor-/Langzeittests und die fehlende vertrauenswürdige Codesignatur bleiben offen. M14/M15 ergänzen keine Cloud-Pflicht und keine Laufzeit-Downloads.

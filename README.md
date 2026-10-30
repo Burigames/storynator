@@ -26,6 +26,30 @@ Neutrale dunkle Navigation, helle Papierfläche, zurückhaltende Symbolleiste un
 
 ![Storynator Dark Mode – Ozean](Vorschau-Dark.png)
 
+## Neu in Version 0.6 – M14 und M15
+
+**Manuskript:** Über das neue Menü Teile und Szenen anlegen, unter „Struktur & Status“ verschachteln, per Drag-and-drop sortieren, umbenennen und Entwurf/Überarbeitung/Fertig vergeben. Drag-and-drop funktioniert auch direkt in der linken Manuskriptnavigation. Szenen bleiben im Druck/PDF innerhalb des Kapitels fortlaufend; die hierarchische Exportauswahl kann ganze Teilbäume oder einzelne Kapiteltexte/Szenen schalten.
+
+**Überarbeiten:** „Suchen & Ersetzen“ zeigt Treffer im aktuellen Dokument oder gesamten Manuskript. Formatierung und Bilder bleiben erhalten; Zielnamen von Verweisen werden übersprungen. „Kommentare & Lesezeichen“ verankert Notizen an Auswahl oder Position, bietet Erledigt-Markierungen und Sprung zur Textstelle. Offene Kommentare erscheinen zusätzlich als Randnotizen in der Schreibhilfe. „Kapitelstände“ speichert benannte Versionen und stellt sie mit Formatierung, Bildern, Kommentaren und Status wieder her. Vor Ersetzen/Korrekturen und Wiederherstellen werden automatisch Stände angelegt.
+
+**Schreibziele:** Wortzahlen pro Dokument und Projekt, Gesamt-/Tagesziel und optional lokal gespeicherte Sitzungen. „Sitzungen anzeigen“ zeigt Netto-Wortzuwachs und geschätzte aktive Minuten. Die Zeitmessung ist eine Näherung anhand von Textänderungen; Tagesfortschritt summiert positive Nettozuwächse.
+
+**Offline-Rechtschreibung:** Deutsch und Englisch sind mitgeliefert. „Kapitel prüfen“ arbeitet im Hintergrund; mögliche Fehler erscheinen als Wortliste. „Alle Vorkommen ersetzen“ korrigiert das gewählte Wort außerhalb von Verweisen. Eigennamen lassen sich ins Projektwörterbuch aufnehmen und dort wieder entfernen. Keine Internetverbindung, keine Grammatikprüfung und keine Garantie, jeden gültigen Eigennamen zu erkennen.
+
+**Vorlagen:** Doppelklick auf die Feldeinstellungen erlaubt Feldgruppe, linke/rechte Spalte, Pflichtfeld und Hilfetext. Bei Dropdown/Mehrfachauswahl zusätzlich Quellkategorie und Feldvergleich (gleich/enthält) festlegen. Für Checkboxfilter sind beispielsweise „Ja/Nein“ möglich. Bestehende ausgefilterte Werte bleiben sichtbar. „Fertig“ meldet fehlende Pflichtwerte; Speichern bleibt für unvollständige Entwürfe möglich.
+
+**Beziehungen:** Menü „Welt → Beziehungen“ verwaltet eigene Typen mit Rückbezeichnung, Richtung, Beschreibung und optionaler Gültigkeit im Projektkalender. Ein Anfang ohne Ende gilt zeitlich unbegrenzt ab dem Anfang. Datumseingabe folgt wie bei der Timeline `Jahr/Monat/Tag` oder dem reinen Jahreskalender. Rückverweise aus Texten und Verknüpfungsfeldern sowie typisierte Beziehungen erscheinen auf der Welt-Leseseite. Der Graph bietet Zoom, Verschieben und Doppelklick auf Punkte **oder Namen**. Bis zu 200 Objekte werden gleichzeitig gezeigt; Fokusobjekt wählen, um dessen Nachbarn zu sehen.
+
+**Welt durchsuchen:** Kategorie, Suchtext, Favoriten und Feldinhalt kombinieren, als Ansicht speichern oder zuletzt geöffnete Einträge nach oben sortieren. Favoriten/Ansichten sind portabel im Projekt; Verlauf ist lokal. „Duplizieren“ erzeugt eine neue ID mit kopierten Feldwerten und bisherigen Verknüpfungszielen. „Kategorie wechseln“ bietet eine typgleiche Feldzuordnung. Alle alten Werte bleiben zusätzlich mit der früheren Vorlage im Eintrag archiviert; vorher wird eine Projektsicherung erstellt.
+
+**Projektformat v3:** Bestehende v1-/v2-Dateien werden im Speicher übernommen und vor Schreiben im neuen Format als `.before-v3-<Prüfsumme>.bak` daneben gesichert. Alte Programme können v3 nicht öffnen. Originale bleiben für ältere Versionen erhalten. Alle Funktionen bleiben lokal; Projekt-/Buchcover erscheinen weiterhin ausschließlich im PDF.
+
+Die vollständige Abnahmeübersicht und Grenzen stehen in [MEILENSTEINE.md](MEILENSTEINE.md).
+
+### Wörterbücher und Lizenzen
+
+Die unveränderten Wörterbuchdaten liegen als ZIP mit editierbaren AFF-/DIC-Dateien unter `assets/dictionaries/`. Das deutsche Frami-Wörterbuch steht unter GPL v2/v3; englische Urheber- und Lizenzhinweise stehen in `README-en.txt`. Spylls 0.1.7 steht unter MPL 2.0; sein unveränderter Python-Quellcode und Lizenztext werden ebenfalls mitgeliefert. Quellen und Bedingungen sind im Programm unter **Hilfe → Lizenzen & Quellen** erreichbar. Die eigenen Storynator-Quelldateien behalten ihre bisherige Lizenz.
+
 ## Neu in Version 0.5 – Alltag, Sicherungen und Cover
 
 Die umgesetzten Unterpunkte und die noch offenen manuellen Abnahmen stehen in [MEILENSTEINE.md](MEILENSTEINE.md).
@@ -96,7 +120,7 @@ Tab bewegt den Fokus auch aus dem Texteditor heraus. Navigations- und Auswahllis
 
 ## Speicherung und Sicherheit
 
-`.storynator` ist ein ZIP-Archiv mit `project.json` (Formatversion 1) und `assets/`. Dokumente und formatierte Felder enthalten Qt-kompatibles HTML, Links `story:<UUID>` und Bilder `asset:<Dateiname>`. Keine ursprünglichen Bildpfade werden benötigt. Feld-IDs bleiben bei Umbenennung stabil; archivierte Werte bleiben im Projekt.
+`.storynator` ist ein ZIP-Archiv mit `project.json` (aktuell Formatversion 3) und `assets/`. Dokumente und formatierte Felder enthalten Qt-kompatibles HTML, Links `story:<UUID>` und Bilder `asset:<Dateiname>`. Keine ursprünglichen Bildpfade werden benötigt. Feld-IDs bleiben bei Umbenennung stabil; archivierte Werte bleiben im Projekt.
 
 Speichern schreibt im Zielverzeichnis eine temporäre Datei, synchronisiert deren Inhalt und ersetzt die Zieldatei atomar. Ein Fehler vor dem Austausch lässt die letzte gültige Datei erhalten. Das ist keine Garantie gegen Hardwaredefekte oder alle Netzwerkdateisystemfehler; eigene Projektkopien bleiben sinnvoll.
 
@@ -108,6 +132,8 @@ Fehler beim Schreiben einer automatischen Sicherung werden in der Statusleiste u
 
 - `core.py`: Projektmodell, versionierter ZIP-Container, atomarer Austausch, eingebettete Ressourcen, UUID-Auflösung, Rückverweise, Kalenderarithmetik.
 - `ui.py`: Mindestgrößen, vollständige Bedienflächen und explizite Dropdown-/Schritt-Pfeile.
+- `authoring.py`, `manuscript_ui.py`, `spelling.py`: Manuskriptstruktur, Überarbeitung, Ziele und Offline-Rechtschreibung.
+- `worldmodel.py`, `world_ui.py`, `worldlayout.py`: Weltfilter, Beziehungen/Graph, Feldlayouts und Kategorieübertragung.
 - `i18n.py`: Offline-Sprachkatalog und Qt-Übersetzungen.
 - `printing.py`: portable Druckeinstellungen und lokale Druckervorgaben.
 - `design.py`: gemeinsames Gestaltungssystem und skalierbare Vektorsymbole.
@@ -133,7 +159,7 @@ Dies ist eine funktionierende erste Desktop-Version, keine vollständig ausgerei
 - Kalender unterstützen frei benannte Jahre, beliebig viele Monate mit individueller Länge, Tage und optionale Wochen sowie reine Jahreszählung. Beliebige zusätzliche Hierarchiestufen (etwa Stunden oder mehrere verschachtelte Unterjahreseinheiten) sind noch nicht umgesetzt.
 - Schaltregeln sind positive periodische Tageszusätze; Ausnahmeregeln wie „alle 100 Jahre nicht, außer alle 400“ haben noch keine eigene Darstellung. Der Ursprung liegt am ersten Tag des Ausgangsjahrs.
 - Datumsfelder haben Texteingabe mit Validierung statt eines grafischen Datumspickers. Monatssortierung erfolgt über die Tabellenreihenfolge; die Monate werden von oben nach unten angelegt.
-- Der Schreibeditor ist eine fortlaufende Schreibfläche; die paginierte Darstellung gibt es in der Druckvorschau. Keine Kopf-/Fußzeilen, Tabellenbearbeitung, DOCX-Import/-Export oder Rechtschreibprüfung.
-- Formatierte Felder lassen sich über dieselbe Werkzeugleiste bearbeiten; Vorlagen haben noch keine visuelle Anordnung von Spalten oder Gruppen.
-- Verknüpfungen besitzen keine Richtungstypen oder Graphansicht. Ein Wechsel der Auswahlquelle in einer bereits geöffneten Feldvorlage kann ein erneutes Öffnen des Bearbeitungsformulars erfordern.
+- Der Schreibeditor ist eine fortlaufende Schreibfläche; die paginierte Darstellung gibt es in der Druckvorschau. Keine Kopf-/Fußzeilen, Tabellenbearbeitung, DOCX-Import/-Export oder Grammatikprüfung.
+- Vorlagen haben Feldgruppen und zwei Spalten, aber keinen frei ziehbaren Formular-Designer mit beliebiger Spaltenzahl.
+- Der Beziehungsgraph begrenzt eine Ansicht auf 200 Objekte. Große Welten über Fokusobjekt/Nachbarn eingrenzen.
 - Eine separate Startseitenaktion zum Löschen alter Verlaufseinträge fehlt. Vollständige manuelle Screenreader-, Mehrmonitor- und Windows-Langzeittests stehen weiterhin aus.

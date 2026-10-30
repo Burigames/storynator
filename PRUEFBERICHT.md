@@ -78,3 +78,26 @@ Neu geprüft:
 Der Starttest der veröffentlichten EXE lädt das alte eingebettete Beispiel in Format v2, speichert es erneut, prüft die Sicherungshistorie, exportiert beide Cover in ein PDF, liest dessen Seitenzahl mit QtPdf und öffnet/schließt die echte QtPdfWidgets-Vorschau. Die Installer-Prüfung kontrolliert weiterhin Startmenü-Eintrag, Projekt-/Preset-Dateizuordnungen und Start der installierten Anwendung.
 
 Offene manuelle Abnahmen: Screenreader mit realen Hilfsmitteln, Mehrmonitor-/DPI-Wechsel, längere Schreibsitzungen auf verschiedener Windows-Hardware sowie physischer Druck. Die genaue Untergliederung und priorisierte Abnahmeliste stehen in `MEILENSTEINE.md`.
+
+## Version 0.6 – M14 und M15
+
+Testumfang: **72 automatisierte Tests**. Ergänzt wurden echte Qt-Dialog-, Dokument-, Archiv- und PDF-Prüfungen für:
+
+- Teile/Kapitel/Szenen, Reihenfolge, Elternzuordnung, Status und Abweisung zyklischer Strukturen. Reparenting im Strukturdialog erhält die Bedienelemente und Metadaten.
+- Suchen/Ersetzen mit Format-, Bild- und Kommentarerhalt, übersprungenen Verweisnamen und unmittelbar benachbarten Treffern.
+- Kommentare, Randnotizen und Lesezeichen; Textpositionen nach Einfügen, Ersetzen, Entfernen und Umbenennen referenzierter Objekte in geschlossenen Kapiteln.
+- Benannte Kapitelstände mit Wiederherstellung und Schutz historischer Bildressourcen vor Bereinigung.
+- Tatsächliches PDF einer Kapitel-/Szenenstruktur in korrekter Reihenfolge und ohne unnötigen Szenen-Seitenumbruch.
+- Hierarchische Druckauswahl, Teilbaum-Schaltung und gespeicherte Einzelauswahl. Ausstehende Änderungen großer Dokumente werden vor dem Export übernommen.
+- Deutsche und englische Offline-Wörterbücher, Projektwörter und asynchrone Prüfung.
+- Schreibziele, Netto-Wortzuwachs und portable Sitzungsdaten.
+- Pflichtfelder, Gruppen/Spalten/Hilfetexte, gefilterte Auswahlfelder und Preset-Export mit neu zugeordneten Quellfeld-IDs. Unvollständige Entwürfe bleiben speicherbar.
+- Typisierte Beziehungen mit Rückbezeichnung, Richtung und Kalender-Gültigkeit; Rückverweise, Löschwarnungen und sichere Anzeige fehlender Ziele beim Bearbeiten.
+- Duplikate und Kategorieübertragung mit Feldzuordnung, Archiv, unverändertem Objekt-Identifier und Bild-/Verknüpfungserhalt.
+- Favoriten, zuletzt geöffnete Objekte, gespeicherte Ansichten und Öffnen eines Objekts über dessen Namen im Beziehungsgraphen.
+- Geöffnete Welt-Leseseiten aktualisieren neue Beziehungen und Rückverweise.
+- Feste Formatdateien v1/v2/v3 mit Roundtrip und Erhalt unbekannter Metadaten.
+
+Zusätzlich werden die Layout-/Kontrasttests bei 150 % Skalierung ausgeführt. Der Starttest lädt beide Wörterbücher aus den mitgelieferten ZIP-Dateien, erstellt Kapitelstand und Szene, speichert eine typisierte Beziehung, öffnet/schließt den Graphen, prüft Archiv/Sicherungshistorie und exportiert/zeigt das PDF mit beiden Covern. Drei vollständige lokale Starts und Beendigungen wurden nach Korrektur der Qt-Aufräumreihenfolge erfolgreich geprüft.
+
+Die Windows-Pipeline führt die vollständige Suite und Skalierungsprüfung aus und testet anschließend die gebaute EXE sowie den Installer samt Dateizuordnungen. Die Veröffentlichung erfolgt erst nach erfolgreichen Schritten. Screenreader-, Mehrmonitor- und längere manuelle Alltagstests bleiben wie bisher gesonderte offene Abnahmen.

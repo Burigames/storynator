@@ -1,0 +1,10 @@
+Offline dictionaries for Storynator
+
+Source: https://github.com/LibreOffice/dictionaries/tree/master
+German: de/de_DE_frami.aff and de/de_DE_frami.dic, unchanged and ZIP-compressed as de_DE.zip. See LICENSE-de.txt and GPL-2.0.txt.
+English: en/en_US.aff and en/en_US.dic, unchanged and ZIP-compressed as en_US.zip. See README-en.txt and LICENSE-en.txt for authorship and license terms.
+Spylls engine: https://github.com/zverok/spylls (Mozilla Public License 2.0, LICENSE-spylls.txt).
+
+The unchanged Spylls 0.1.7 Python source is included in spylls-source-0.1.7.zip. Upstream distribution: https://pypi.org/project/spylls/0.1.7/
+
+The application source remains under its own LICENSE. These data files retain their original licenses and are available in full, including the editable aff/dic sources inside the ZIP archives.

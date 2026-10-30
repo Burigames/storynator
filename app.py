@@ -1,7 +1,7 @@
 import sys, json, base64, os
 from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QUrl, QSettings, QMarginsF, QSize, QEvent, QSignalBlocker
-from PySide6.QtGui import QAction, QFont, QTextCharFormat, QTextCursor, QTextDocument, QImage, QTextImageFormat, QTextFormat, QTextListFormat, QColor, QPageSize, QTextBlockFormat, QFontInfo
+from PySide6.QtGui import QFontMetrics,QAction, QFont, QTextCharFormat, QTextCursor, QTextDocument, QImage, QTextImageFormat, QTextFormat, QTextListFormat, QColor, QPageSize, QTextBlockFormat, QFontInfo
 from PySide6.QtWidgets import *
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog, QPageSetupDialog
 from core import *
@@ -10,10 +10,16 @@ import printing
 import addons
 from addon_ui import AddonManager,export_preset
 from worldview import WorldReader
+import authoring,worldmodel
+from manuscript_ui import print_selection_tree,selected_document_ids,ManuscriptTree,StructureDialog,ReplaceDialog,NotesDialog,RevisionsDialog,GoalsDialog
+from spelling import SpellDialog,license_dialog
+from world_ui import WorldBrowser,RelationshipDialog,GraphDialog
+from worldlayout import fields_layout
+import time
 from safety import BackupStore,SearchIndex,migration_copy,project_report
 from project_ui import CoversDialog,BackupDialog,IntegrityDialog,backup_preferences
 from media import import_image,store_image,image_from_asset
-from PySide6.QtCore import QLockFile,QSizeF,QThreadPool
+from PySide6.QtCore import QLockFile,QSizeF,QThreadPool,QObject
 from tasks import BackupTask
 import copy
 import logging,traceback
@@ -54,7 +60,9 @@ class Rich(QTextEdit):
         super().__init__(); self.w=w; self.obj=obj; self.key=key; self.setAcceptRichText(True); self.setFont(QFont('Georgia',14)); self.document().setDocumentMargin(35)
         self.setAccessibleName(obj.get('name',tr('Formatierter Text')));self.setTabChangesFocus(True);self.setMinimumHeight(190);self.document().setDefaultFont(QFont('Georgia',14));self.load_assets();self.setHtml(render(w.p,obj.get(key,'')));self.setMouseTracking(True)
         self.cursorPositionChanged.connect(lambda:w.sync_format(self));self.currentCharFormatChanged.connect(lambda _:w.sync_format(self))
-        self.store_timer=QTimer(self);self.store_timer.setSingleShot(True);self.store_timer.timeout.connect(self.flush);self.textChanged.connect(self.store);self.mark_timer=QTimer(self);self.mark_timer.setSingleShot(True);self.mark_timer.timeout.connect(self.update_marks);self.textChanged.connect(lambda:self.mark_timer.start(60));self.update_marks()
+        self.store_timer=QTimer(self);self.store_timer.setSingleShot(True);self.store_timer.timeout.connect(self.flush);self.reload_annotations();self.textChanged.connect(self.store);self.mark_timer=QTimer(self);self.mark_timer.setSingleShot(True);self.mark_timer.timeout.connect(self.update_marks);self.textChanged.connect(lambda:self.mark_timer.start(60));self.update_marks()
+    def reload_annotations(self):self.note_cursors=authoring.annotation_cursors(self.obj,self.document());self.update_marks()
+    def sync_notes(self):authoring.sync_annotations(self.obj,getattr(self,'note_cursors',{}))
     def sync_links(self,lookup):
         ranges=[];block=self.document().begin()
         while block.isValid():
@@ -71,7 +79,7 @@ class Rich(QTextEdit):
         with QSignalBlocker(self):
             for start,end,href,fmt in reversed(ranges):
                 name=(lookup.get(href[6:]) or {}).get('name',tr('[Gelöschter Eintrag]'));edit=QTextCursor(self.document());edit.setPosition(start);edit.setPosition(end,QTextCursor.KeepAnchor)
-                if edit.selectedText()!=name:edit.insertText(name,fmt);changed=True
+                if edit.selectedText()!=name:authoring.replace_cursor(self.note_cursors,edit,name,fmt);changed=True
             self.setTextCursor(cursor)
         if changed:self.flush();self.update_marks()
     def load_assets(self):
@@ -81,7 +89,7 @@ class Rich(QTextEdit):
     def store(self):
         if self.document().characterCount()>100000:self.store_timer.start(250)
         else:self.obj[self.key]=self.toHtml()
-        self.w.changed()
+        self.sync_notes();self.w.note_writing(self.obj);self.w.changed()
     def flush(self):
         if self.store_timer.isActive():self.store_timer.stop()
         self.obj[self.key]=self.toHtml()
@@ -102,6 +110,11 @@ class Rich(QTextEdit):
                         sel=QTextEdit.ExtraSelection();sel.cursor=QTextCursor(self.document());sel.cursor.setPosition(frag.position());sel.cursor.setPosition(frag.position()+frag.length(),QTextCursor.KeepAnchor);sel.format.setForeground(QColor(CURRENT['link'] if anchor else '#e0e7ed'));selections.append(sel)
                 it+=1
             block=block.next()
+        for note in self.obj.get('annotations',[]):
+            if note.get('resolved'):continue
+            cursor=getattr(self,'note_cursors',{}).get(note['id'])
+            if cursor and cursor.hasSelection():
+                selection=QTextEdit.ExtraSelection();selection.cursor=QTextCursor(cursor);selection.format.setBackground(QColor(210,165,55,45));selections.append(selection)
         self.setExtraSelections(selections)
     def viewportEvent(self,event):
         if event.type()==QEvent.ToolTip:
@@ -154,7 +167,7 @@ def project_for_language(name=None):
 class Main(QMainWindow):
     def __init__(self, recover=True):
         super().__init__()
-        self.p=project_for_language();self.path=None;self.dirty=False;self.section='editor';self._project_lock=None;self.revision=0;self._search_revision=-1;self._syncing=False
+        self.p=project_for_language();self.path=None;self.dirty=False;self.section='editor';self._project_lock=None;self.revision=0;self._search_revision=-1;self._syncing=False;self._writing_id=uid();self._writing_start=authoring.now();self._writing_base=0;self._writing_seconds=0;self._last_typing=None
         self.backup_pool=QThreadPool(self);self.backup_pool.setMaxThreadCount(1);self._backup_busy=False;self._closing=False
         self.status_timer=QTimer(self);self.status_timer.setSingleShot(True);self.status_timer.timeout.connect(self.update_status);self.views_timer=QTimer(self);self.views_timer.setSingleShot(True);self.views_timer.timeout.connect(self.refresh_open_views)
         self.settings=QSettings('Storynator','Storynator');self.resize(1500,960);self.setMinimumSize(800,600)
@@ -162,7 +175,7 @@ class Main(QMainWindow):
         self.data_root=Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation));self.backups=BackupStore(self.data_root/'backups',self.settings.value('backup/keep',20));self.recovery=self.data_root/'sessions'/(uid()+'.storynator');self.recovery.parent.mkdir(parents=True,exist_ok=True);self._session_lock=QLockFile(str(self.recovery)+'.lock');self._session_lock.setStaleLockTime(0);self._session_lock.tryLock(0)
         self.tabs=StudioTabs(self);self.tabs.setTabsClosable(True);self.tabs.setDocumentMode(True);self.tabs.setMovable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab);self.tabs.currentChanged.connect(self.tab_changed)
-        self.nav=QTreeWidget();self.nav.setObjectName('projectTree');self.nav.setHeaderHidden(True);self.nav.setIndentation(14);self.nav.setAnimated(True)
+        self.nav=ManuscriptTree(self);self.nav.setObjectName('projectTree');self.nav.setHeaderHidden(True);self.nav.setIndentation(14);self.nav.setAnimated(True)
         self.nav.setRootIsDecorated(False);self.nav.itemClicked.connect(lambda i,c:self.open_object(i.data(0,Qt.UserRole)) if i.data(0,Qt.UserRole) else None);self.nav.itemActivated.connect(lambda i,c:self.open_object(i.data(0,Qt.UserRole)) if i.data(0,Qt.UserRole) else None)
         self.nav.viewport().installEventFilter(self);self.nav.setContextMenuPolicy(Qt.CustomContextMenu);self.nav.customContextMenuRequested.connect(self.navigation_menu)
         sidebar=QWidget();sidebar.setObjectName('sidebar');sl=QVBoxLayout(sidebar);sl.setContentsMargins(18,18,18,14);sl.setSpacing(5)
@@ -187,6 +200,22 @@ class Main(QMainWindow):
         self.timer=QTimer(self);self.timer.timeout.connect(self.autosave_background);self.timer.start(int(self.settings.value('backup/interval',60))*1000)
         self.install_shortcuts()
         if recover:QTimer.singleShot(100,self.check_recovery)
+    def note_writing(self,obj):
+        if not obj.get('id') or not any(d['id']==obj['id'] for d in self.p['documents']):return
+        tick=time.monotonic()
+        if self._last_typing is not None:self._writing_seconds+=min(30,tick-self._last_typing)
+        self._last_typing=tick
+    def record_writing_session(self):
+        if not self.p.get('writing_goals',{}).get('track') or self._last_typing is None:return
+        item=next((s for s in self.p.get('writing_sessions',[]) if s['id']==self._writing_id),None)
+        if item is None:
+            item=dict(id=self._writing_id,started=self._writing_start);self.p.setdefault('writing_sessions',[]).append(item)
+        item.update(seconds=round(self._writing_seconds),words_added=sum(authoring.words(d['html']) for d in self.p['documents'])-self._writing_base)
+    def recent_ids(self):
+        try:return json.loads(self.settings.value('browsing/'+self.p['project_id'],'[]'))
+        except (ValueError,TypeError):return []
+    def remember_object(self,id):
+        recent=[id]+[old for old in self.recent_ids() if old!=id];self.settings.setValue('browsing/'+self.p['project_id'],json.dumps(recent[:100]))
     def install_shortcuts(self):
         for text,key,callback in [('Suche','Ctrl+K',lambda:self.global_search.setFocus()),('Neues Kapitel','Ctrl+Shift+N',self.add_doc),('Editor','Ctrl+1',lambda:self.navigate('editor')),('Timeline','Ctrl+2',lambda:self.navigate('timeline')),('Welt','Ctrl+3',lambda:self.navigate('world')),('Tab schließen','Ctrl+W',lambda:self.close_tab(self.tabs.currentIndex())),('Nächster Tab','Ctrl+Tab',lambda:self.tabs.setCurrentIndex((self.tabs.currentIndex()+1)%max(1,self.tabs.count()))),('Vorheriger Tab','Ctrl+Shift+Tab',lambda:self.tabs.setCurrentIndex((self.tabs.currentIndex()-1)%max(1,self.tabs.count()))),('Bearbeiten','Ctrl+E',self.edit_current_world)]:
             action=QAction(tr(text),self);action.setShortcut(key);action.triggered.connect(callback);self.addAction(action)
@@ -217,6 +246,7 @@ class Main(QMainWindow):
     def adopt_project(self,p,path=None,lock=None):
         self.backup_pool.waitForDone();self._backup_busy=False
         if self._project_lock and self._project_lock is not lock:self._project_lock.unlock()
+        self._writing_id=uid();self._writing_start=authoring.now();self._writing_base=sum(authoring.words(d['html']) for d in p['documents']);self._writing_seconds=0;self._last_typing=None
         self._project_lock=lock;self.p=p;self.path=str(path) if path else None;self.active_editor=None;self.tabs.clear();self.revision+=1;self._search_revision=-1;self.dirty=False;self.refresh();self.open_object(p['documents'][0]['id']) if p['documents'] else self.home()
         self.recovery.unlink(missing_ok=True)
     def refresh_open_views(self):
@@ -227,8 +257,13 @@ class Main(QMainWindow):
             for i in range(self.tabs.count()):
                 page=self.tabs.widget(i);obj=getattr(page,'obj',None)
                 if obj:
+                    self.tabs.setTabText(i,obj['name']);self.update_note_sidebar(page);heading=page.findChild(QLabel,'entryHeading')
+                    if heading:heading.setText(obj['name'])
+                    status=page.findChild(QComboBox,'manuscriptStatus')
+                    if status:
+                        with QSignalBlocker(status):status.setCurrentIndex(max(0,status.findData(obj.get('status','draft'))))
                     signature=json.dumps([obj,category_lookup.get(obj.get('category'))],ensure_ascii=False)
-                    if getattr(page,'view_signature',None)!=signature:
+                    if getattr(page,'view_signature',None)!=signature or obj in self.p['entries'] and not getattr(page,'world_edit',False) and page==self.tabs.currentWidget() and getattr(page,'reference_revision',-1)!=self.revision:
                         if obj in self.p['entries'] and not getattr(page,'world_edit',False):
                             area=page.findChild(QScrollArea);scroll=area.verticalScrollBar().value() if area else 0;self.render_world_page(page,False);page.findChild(QScrollArea).verticalScrollBar().setValue(scroll)
                         page.view_signature=signature
@@ -246,7 +281,8 @@ class Main(QMainWindow):
                     signature=tuple((o['id'],o['name'],o['start'],o['end'],o['kind']) for o in self.p['events'])+((repr(self.p['calendar']),),)
                     if getattr(page,'timeline_signature',None)!=signature:page.timeline_refresh();page.timeline_signature=signature
             page=self.tabs.currentWidget()
-            if getattr(page,'world_page',False):self.show_world()
+            if hasattr(page,'refresh_data'):page.refresh_data()
+            elif getattr(page,'world_page',False):self.show_world()
         finally:self._syncing=False
     def close_tab(self,index):
         if index<0:return
@@ -319,10 +355,14 @@ class Main(QMainWindow):
     def refresh(self):
         selected=self.selected() if hasattr(self,'nav') else None;self.nav.setUpdatesEnabled(False);self.nav.clear();by_category={}
         for entry in self.p['entries']:by_category.setdefault(entry['category'],[]).append(entry)
-        for title,seq in [('Editor',self.p['documents']),('Welt',addons.visible_categories(self.p)),('Timeline',self.p['events'])]:
+        for title,seq in [('Editor',authoring.ordered_documents(self.p)),('Welt',addons.visible_categories(self.p)),('Timeline',self.p['events'])]:
             root=QTreeWidgetItem([{'Editor':tr('Alle Kapitel'),'Welt':tr('Deine Kategorien'),'Timeline':tr('Alle Ereignisse')}[title]]); self.nav.addTopLevelItem(root)
+            doc_items={}
             for o in seq:
-                item=QTreeWidgetItem([o['name']]);item.setIcon(0,icon('file' if title=='Editor' else 'folder' if title=='Welt' else 'timeline',theme_colors(CURRENT['mode'],CURRENT['accent'])['muted'],18)); item.setData(0,Qt.UserRole,o['id']);item.setToolTip(0,html.escape(o['name'])); root.addChild(item)
+                item=QTreeWidgetItem([o['name']]);item.setIcon(0,icon('file' if title=='Editor' else 'folder' if title=='Welt' else 'timeline',theme_colors(CURRENT['mode'],CURRENT['accent'])['muted'],18)); item.setData(0,Qt.UserRole,o['id']);item.setToolTip(0,html.escape(o['name']));parent_item=doc_items.get(o.get('parent')) if title=='Editor' else None
+                if parent_item:parent_item.addChild(item)
+                else:root.addChild(item)
+                if title=='Editor':doc_items[o['id']]=item
                 if title=='Welt':
                     for en in by_category.get(o['id'],[]):
                         if True:
@@ -333,11 +373,16 @@ class Main(QMainWindow):
         for name,fn,key in [('Neu',self.new,'Ctrl+N'),('Öffnen',self.open_file,'Ctrl+O'),('Speichern',self.save,'Ctrl+S'),('Speichern unter',lambda:self.save(True),'Ctrl+Shift+S'),('Startseite',self.home,''),('Druckvorschau / PDF',self.printing,'Ctrl+P')]:
             a=m.addAction(tr(name)); a.triggered.connect(fn); a.setShortcut(key)
         for text,callback in [('Projekt & Buchcover',lambda:CoversDialog(self).exec()),('Sicherungen & Wiederherstellung',lambda:BackupDialog(self).exec()),('Sicherungseinstellungen',lambda:backup_preferences(self)),('Projekt prüfen & bereinigen',lambda:IntegrityDialog(self).exec())]:m.addAction(tr(text),callback)
+        m=self.menuBar().addMenu(tr('Manuskript'))
+        for text,callback in [('Teil anlegen',lambda:self.add_manuscript_item('part')),('Szene anlegen',lambda:self.add_manuscript_item('scene')),('Struktur & Status',lambda:StructureDialog(self).exec()),('Suchen & Ersetzen',lambda:ReplaceDialog(self).exec()),('Schreibziele & Statistik',lambda:GoalsDialog(self).exec()),('Kommentare & Lesezeichen',lambda:NotesDialog(self).exec()),('Kapitelstände',lambda:RevisionsDialog(self).exec()),('Offline-Rechtschreibung',lambda:SpellDialog(self).exec())]:m.addAction(tr(text),callback)
+        m=self.menuBar().addMenu(tr('Welt'))
+        m.addAction(tr('Beziehungen'),lambda:RelationshipDialog(self,(self.current() or {}).get('id')).exec());m.addAction(tr('Beziehungsgraph'),lambda:GraphDialog(self,(self.current() or {}).get('id')).exec())
         m=self.menuBar().addMenu(tr('Eintrag'))
         for name,fn in [('Umbenennen',self.rename),('Löschen',self.delete),('Nach oben',lambda:self.move(-1)),('Nach unten',lambda:self.move(1))]:m.addAction(tr(name)).triggered.connect(fn)
         m=self.menuBar().addMenu(tr('Ansicht'));m.addAction(tr('Einstellungen'),self.preferences);m.addAction('Editor',lambda:self.navigate('editor'));m.addAction('Timeline',lambda:self.navigate('timeline'));m.addAction(tr('Welt'),lambda:self.navigate('world'));m.addAction(tr('Projektkalender'),self.calendar)
         a=m.addAction(tr('Fokusmodus'));a.setShortcut('F11');a.triggered.connect(self.toggle_focus)
         m=self.menuBar().addMenu('Addon');m.addAction(tr('Addons verwalten'),lambda:AddonManager(self).exec());m.addAction(tr('Kategorien als Preset exportieren'),lambda:export_preset(self))
+        m=self.menuBar().addMenu(tr('Hilfe'));m.addAction(tr('Lizenzen & Quellen'),lambda:license_dialog(self))
     def select_navigation(self,id):
         iterator=QTreeWidgetItemIterator(self.nav)
         while iterator.value():
@@ -366,7 +411,7 @@ class Main(QMainWindow):
             id=obj.property('entryId');view=obj.parent()
             if isinstance(view,QTreeWidget):
                 item=view.itemAt(event.pos());id=item.data(0,Qt.UserRole) if item else None
-            elif isinstance(view,QListWidget):
+            elif isinstance(view,(QListWidget,QTableWidget)):
                 item=view.itemAt(event.pos());id=item.data(Qt.UserRole) if item else None
             if id:QToolTip.showText(event.globalPos(),self.preview_html(id),obj);return True
         return super().eventFilter(obj,event)
@@ -479,19 +524,8 @@ class Main(QMainWindow):
         except Exception as error:self.error(error)
     def show_world(self):
         for i in range(self.tabs.count()):
-            if getattr(self.tabs.widget(i),'world_page',False):
-                old=self.tabs.widget(i);self.tabs.removeTab(i);old.deleteLater();break
-        page=QWidget();page.world_page=True;page.section='world';l=QVBoxLayout(page);l.setContentsMargins(36,30,36,30);l.setSpacing(20)
-        row=QHBoxLayout();col=QVBoxLayout();col.addWidget(label('WELTENBAU','eyebrow'));col.addWidget(label('Eine Welt voller Möglichkeiten.','title'));col.addWidget(label('Alles, was deine Geschichte lebendig macht.'));row.addLayout(col);row.addStretch();row.addWidget(primary('Neuer Eintrag',self.add_entry,'plus'));l.addLayout(row)
-        scroll=QScrollArea();scroll.setWidgetResizable(True);inner=QWidget();grid=QGridLayout(inner);grid.setContentsMargins(0,0,0,0);grid.setSpacing(18)
-        for index,cat in enumerate(addons.visible_categories(self.p)):
-            card=QFrame();card.setObjectName('card');cl=QVBoxLayout(card);cl.setContentsMargins(24,22,24,22);cl.setSpacing(13);entries=[e for e in self.p['entries'] if e['category']==cat['id']];r=QHBoxLayout();r.addWidget(label(cat['name'],'title',False));r.addStretch();r.addWidget(tool('settings','Kategorievorlage bearbeiten',lambda checked=False,c=cat:self.template(c)));cl.addLayout(r);cl.addWidget(label(str(len(entries))+tr(' Einträge · ')+str(len(cat['fields']))+tr(' eigene Felder'),'muted'))
-            for en in entries[:5]:
-                b=button(en['name']+'    →',lambda checked=False,id=en['id']:self.open_object(id));b.setProperty('role','subtle');b.setProperty('entryId',en['id']);b.installEventFilter(self);b.setToolTip(self.preview_html(en['id']));cl.addWidget(b)
-            if not entries:cl.addWidget(label('Hier beginnt ein neuer Teil deiner Welt.','muted'))
-            cl.addStretch();grid.addWidget(card,index//2,index%2)
-        if not addons.visible_categories(self.p):grid.addWidget(label('Lege deine erste Kategorie an – zum Beispiel Charaktere, Orte oder Länder.'),0,0)
-        grid.setRowStretch((len(self.p['categories'])+1)//2,1);scroll.setWidget(inner);l.addWidget(scroll,1);l.addWidget(button('+ Eigene Kategorie anlegen',self.add_category));self.tabs.addTab(page,tr('Deine Welt'));self.tabs.setCurrentWidget(page);self.breadcrumb.setText(tr('DEINE WELT'))
+            if getattr(self.tabs.widget(i),'world_page',False):self.tabs.setCurrentIndex(i);self.tabs.widget(i).refresh_data();return
+        page=WorldBrowser(self);self.tabs.addTab(page,tr('Deine Welt'));self.tabs.setCurrentWidget(page);self.breadcrumb.setText(tr('DEINE WELT'))
     def guard(self):
         if not self.dirty:return True
         r=QMessageBox.question(self,tr('Ungespeicherte Änderungen'),tr('Änderungen speichern?'),QMessageBox.Save|QMessageBox.Discard|QMessageBox.Cancel)
@@ -514,7 +548,7 @@ class Main(QMainWindow):
     def remember(self,path):
         recent=self.settings.value('recent',[],type=list);self.settings.setValue('recent',([str(path)]+[p for p in recent if p!=str(path)])[:10])
     def save(self,as_new=False):
-        self.flush_editors();self.backup_pool.waitForDone();self._backup_busy=False
+        self.flush_editors();self.record_writing_session();self.backup_pool.waitForDone();self._backup_busy=False
         path=self.path
         if as_new or not path:path=QFileDialog.getSaveFileName(self,tr('Projekt speichern'),path or self.p['name']+'.storynator','Storynator (*.storynator)')[0]
         if not path:return False
@@ -539,14 +573,14 @@ class Main(QMainWindow):
     def autosave_background(self):
         self.flush_editors()
         if not self.dirty or self._backup_busy:return
-        snapshot=copy.deepcopy(self.p);source=self.path;recovery=self.recovery;store=self.backups
+        self.record_writing_session();snapshot=copy.deepcopy(self.p);source=self.path;recovery=self.recovery;store=self.backups
         def work():save_project(snapshot,recovery);store.create(snapshot,source,'Automatisch')
         self._backup_busy=True;self._backup_job=BackupTask(work);self._backup_job.signals.done.connect(self.backup_finished);self.backup_pool.start(self._backup_job)
     def backup_finished(self,error):
         self._backup_busy=False
         if error and not self._closing:self.statusBar().showMessage(tr('Wiederherstellung fehlgeschlagen: ')+error,15000)
     def autosave(self):
-        self.flush_editors();self.backup_pool.waitForDone();self._backup_busy=False
+        self.flush_editors();self.record_writing_session();self.backup_pool.waitForDone();self._backup_busy=False
         if self.dirty:
             try:save_project(self.p,self.recovery);self.backups.create(self.p,self.path,'Automatisch')
             except Exception as e:self.statusBar().showMessage(tr('Wiederherstellung fehlgeschlagen: ')+str(e),15000);logging.exception('Automatic backup failed')
@@ -554,11 +588,18 @@ class Main(QMainWindow):
         if self.guard():
             self._closing=True;self.timer.stop();self.views_timer.stop();self.status_timer.stop();self.backup_pool.waitForDone();self.recovery.unlink(missing_ok=True)
             if self._project_lock:self._project_lock.unlock();self._project_lock=None
+            for editor in self.findChildren(Rich):editor.store_timer.stop();editor.mark_timer.stop();editor.note_cursors.clear()
+            self.active_editor=None
+            for view in self.findChildren(QGraphicsView):view.setScene(None)
+            for scene in self.findChildren(QGraphicsScene):scene.clear()
             self._session_lock.unlock();e.accept()
         else:e.ignore()
-    def add_doc(self):
-        name=ask(self,'Kapitel erstellen')
-        if name:o=dict(id=uid(),name=name,html='');self.p['documents'].append(o);self.changed();self.refresh();self.open_object(o['id'])
+    def add_doc(self):self.add_manuscript_item('chapter')
+    def add_manuscript_item(self,kind):
+        name=ask(self,tr(authoring.KINDS[kind])+' · '+tr('Name:'))
+        if not name:return
+        selected=resolve(self.p,self.selected());parent=selected['id'] if selected in self.p['documents'] and selected.get('kind','chapter')!='scene' and (kind=='scene' or selected.get('kind')=='part') else selected.get('parent') if selected in self.p['documents'] else None
+        item=dict(id=uid(),name=name,html='',kind=kind,parent=parent,status='draft');self.p['documents'].append(item);self.p['documents']=authoring.ordered_documents(self.p);self.changed();self.refresh();self.open_object(item['id'])
     def add_category(self):
         name=ask(self,'Kategorie erstellen')
         if name:c=dict(id=uid(),name=name,fields=[]);self.p['categories'].append(c);self.changed();self.refresh();self.template(c)
@@ -586,6 +627,7 @@ class Main(QMainWindow):
         if name:
             o['name']=name;lookup={item['id']:item for item in objects(self.p)}
             for en in objects(self.p):
+                if en.get('annotations'):authoring.reconcile_doc_links(en,lookup)
                 if 'html' in en:en['html']=render(self.p,en['html'],lookup)
                 for f,v in en.get('values',{}).items():
                     if isinstance(v,str) and 'story:' in v:en['values'][f]=render(self.p,v,lookup)
@@ -612,6 +654,8 @@ class Main(QMainWindow):
         refs=references(self.p,id);message=tr('Eintrag löschen?')+'\n'+o['name']
         if refs:message+=tr('\nVorhandene Verweise in: ')+', '.join(refs)+tr('\nSie bleiben als gelöschte Verweise erkennbar.')
         if QMessageBox.question(self,tr('Löschen'),message)!=QMessageBox.Yes:return
+        for child in self.p['documents']:
+            if child.get('parent')==id:child['parent']=o.get('parent')
         for seq in [self.p['entries'],self.p['events'],self.p['documents']]:
             if o in seq:seq.remove(o)
         for i in reversed(range(self.tabs.count())):
@@ -619,6 +663,9 @@ class Main(QMainWindow):
         self.changed();self.refresh()
     def move(self,delta):
         id=self.selected()
+        if any(doc['id']==id for doc in self.p['documents']):
+            if authoring.move_sibling(self.p,id,delta):self.changed();self.refresh()
+            return
         for seq in [self.p['documents'],self.p['entries'],self.p['categories']]:
             for i,o in enumerate(seq):
                 if o['id']==id and 0<=i+delta<len(seq):seq[i],seq[i+delta]=seq[i+delta],seq[i];self.changed();self.refresh();return
@@ -638,6 +685,9 @@ class Main(QMainWindow):
         cat=next((c for c in self.p['categories'] if c['id']==id),None)
         if cat:self.template(cat);return
         o=resolve(self.p,id)
+        if o:
+            self.remember_object(id)
+            if o.get('annotations'):authoring.reconcile_doc_links(o,{item['id']:item for item in objects(self.p)})
         if o and o in self.p['entries'] and not any(c['id']==o['category'] for c in self.p['categories']):self.error('Kategorie fehlt. Projekt prüfen und eine Sicherung öffnen.');return
         if not o:self.error('Dieser Eintrag wurde gelöscht.');return
         for i in range(self.tabs.count()):
@@ -650,7 +700,9 @@ class Main(QMainWindow):
         if o in self.p['documents']:
             body=QHBoxLayout();body.setContentsMargins(25,24,0,18);body.setSpacing(25)
             canvas=QWidget();canvas_l=QVBoxLayout(canvas);canvas_l.setContentsMargins(0,0,0,0);canvas_l.setSpacing(13)
-            meta=QHBoxLayout();meta.addWidget(label('MANUSKRIPT  /  '+str(self.p['documents'].index(o)+1).zfill(2),'eyebrow'));meta.addStretch();meta.addWidget(label('Deine Worte haben Raum.','muted'));canvas_l.addLayout(meta)
+            meta=QHBoxLayout();meta.addWidget(label('MANUSKRIPT  /  '+str(self.p['documents'].index(o)+1).zfill(2),'eyebrow'));meta.addStretch();status=QComboBox();status.setObjectName('manuscriptStatus')
+            for key,text in authoring.STATUSES.items():status.addItem(tr(text),key)
+            status.setCurrentIndex(max(0,status.findData(o.get('status','draft'))));status.currentIndexChanged.connect(lambda _: (o.update(status=status.currentData()),self.changed()));meta.addWidget(status);meta.addWidget(label('Deine Worte haben Raum.','muted'));canvas_l.addLayout(meta)
             paper=QFrame();paper.setObjectName('paper');paper.setMaximumWidth(880);paper_l=QVBoxLayout(paper);paper_l.setContentsMargins(32,28,32,24);paper_l.setSpacing(17)
             heading=label(o['name'],'title',False);heading.setObjectName('entryHeading');heading.setFont(QFont('Georgia',23));paper_l.addWidget(heading)
             e=Rich(self,o);e.blockSignals(True);e.setObjectName('manuscript');e.document().setDocumentMargin(0);e.setPlaceholderText(tr('Jede Geschichte beginnt mit einem ersten Satz …'));e.blockSignals(False);paper_l.addWidget(e,1);shadow(paper)
@@ -660,7 +712,7 @@ class Main(QMainWindow):
             for en in self.p['entries'][:6]:
                 b=button(en['name']+'   ↗',lambda checked=False,id=en['id']:self.open_object(id));b.setProperty('role','subtle');b.setProperty('entryId',en['id']);b.installEventFilter(self);b.setToolTip(self.preview_html(en['id']));cx.addWidget(b)
             if not self.p['entries']:cx.addWidget(label('Noch keine Einträge.','muted'))
-            cx.addWidget(button('Welt entdecken',self.show_world));cx.addStretch();cx.addWidget(label('DEIN SCHREIBMOMENT','eyebrow'));tip=label('Blende mit F11 alles aus, was dich vom Schreiben ablenkt.','muted');tip.setWordWrap(True);cx.addWidget(tip);body.addWidget(context);l.addLayout(body,1)
+            cx.addWidget(button('Welt entdecken',self.show_world));cx.addWidget(label('Randnotizen','eyebrow'));notes=QWidget();notes.setObjectName('noteSidebar');notes_layout=QVBoxLayout(notes);notes_layout.setContentsMargins(0,0,0,0);cx.addWidget(notes);cx.addWidget(button('Kommentare öffnen',lambda:NotesDialog(self).exec()));self.update_note_sidebar(page);cx.addStretch();cx.addWidget(label('DEIN SCHREIBMOMENT','eyebrow'));tip=label('Blende mit F11 alles aus, was dich vom Schreiben ablenkt.','muted');tip.setWordWrap(True);cx.addWidget(tip);body.addWidget(context);l.addLayout(body,1)
         elif o in self.p['entries']:
             self.render_world_page(page,False)
         else:
@@ -675,6 +727,23 @@ class Main(QMainWindow):
                 for f in cat['fields']:form.addRow(f['name'],self.field(o,f))
             form.addRow(tr('Verknüpfungen'),self.link_field(o,'links'));outer.addWidget(card);outer.addStretch();scroll.setWidget(container);l.addWidget(scroll)
         self.tabs.addTab(page,o['name']);self.tabs.setCurrentWidget(page)
+    def update_note_sidebar(self,page):
+        box=page.findChild(QWidget,'noteSidebar');doc=getattr(page,'obj',{})
+        if not box:return
+        notes=[n for n in doc.get('annotations',[]) if n['kind']=='comment' and not n.get('resolved')];signature=repr(notes)
+        if getattr(box,'signature',None)==signature:return
+        box.signature=signature;layout=box.layout()
+        while layout.count():
+            item=layout.takeAt(0);widget=item.widget()
+            if widget:widget.deleteLater()
+        for note in notes:
+            text=QFontMetrics(self.font()).elidedText(note['text'].replace('\n',' '),Qt.ElideRight,175);b=button(text,lambda checked=False,id=note['id'],page=page:self.jump_note(page,id));b.setProperty('role','subtle');b.setToolTip(note['text']);layout.addWidget(b)
+        if not notes:layout.addWidget(label('Noch keine Randnotizen.','muted'))
+    def jump_note(self,page,id):
+        editor=page.findChild(Rich)
+        if not editor:return
+        cursor=editor.note_cursors.get(id)
+        if cursor:editor.setTextCursor(QTextCursor(cursor));editor.ensureCursorVisible();editor.setFocus()
     def render_world_page(self,page,editing=False):
         for editor in page.findChildren(Rich):
             if editor.store_timer.isActive():editor.flush()
@@ -686,14 +755,15 @@ class Main(QMainWindow):
             if widget:widget.setParent(None);widget.deleteLater()
         page.world_edit=editing;o=page.obj;scroll=QScrollArea();scroll.setWidgetResizable(True);layout.addWidget(scroll)
         if not editing:
-            reader=WorldReader(self,o,lambda:self.render_world_page(page,True));scroll.setWidget(reader)
+            reader=WorldReader(self,o,lambda:self.render_world_page(page,True));scroll.setWidget(reader);page.reference_revision=self.revision
         else:
             container=QWidget();outer=QVBoxLayout(container);outer.setContentsMargins(36,26,36,30);outer.setSpacing(20);top=QHBoxLayout();heading=label(o['name'],'title',False);heading.setObjectName('entryHeading');top.addWidget(heading);top.addStretch()
-            def finish():self.refresh();self.render_world_page(page,False)
+            def finish():
+                self.flush_editors();missing=worldmodel.missing_required(self.p,o)
+                if missing:self.error(tr('Pflichtfelder fehlen: ')+', '.join(missing));return
+                self.refresh();self.render_world_page(page,False)
             top.addWidget(primary(tr('Fertig'),finish,'check'));outer.addLayout(top);notice=label(tr('Bearbeitungsmodus · Änderungen gehören zum Projekt und werden mit ihm gespeichert.'),'muted');notice.setWordWrap(True);outer.addWidget(notice);card=QFrame();card.setObjectName('card');form=QFormLayout(card);form.setContentsMargins(24,24,24,24);form.setVerticalSpacing(20);form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow);desc=Rich(self,o);form.addRow(tr('Beschreibung'),desc);cat=next(c for c in self.p['categories'] if c['id']==o['category']);form.addRow(button(tr('Kategorievorlage bearbeiten'),lambda:self.template(cat)))
-            for field in cat['fields']:
-                widget=self.field(o,field);widget.setAccessibleName(field['name']);form.addRow(field['name'],widget)
-            form.addRow(tr('Verknüpfungen'),self.link_field(o,'links'));outer.addWidget(card);outer.addStretch();scroll.setWidget(container)
+            outer.addWidget(card);outer.addWidget(fields_layout(self,o,cat,True));links=QFrame();links.setObjectName('card');links_layout=QVBoxLayout(links);links_layout.addWidget(label(tr('Verknüpfungen'),'eyebrow'));links_layout.addWidget(self.link_field(o,'links'));outer.addWidget(links);outer.addStretch();scroll.setWidget(container)
         if self.tabs.currentWidget()==page:self.set_section('world');self.sync_format()
     def edit_time(self,o,page):
         if self.time_dialog(o):self.tabs.removeTab(self.tabs.indexOf(page));self.open_object(o['id']);self.changed();self.refresh()
@@ -745,7 +815,7 @@ class Main(QMainWindow):
         if t=='Dropdown':
             w=QComboBox();w.addItem('',None);source=f.get('source_category')
             if source:
-                targets=[entry for entry in self.p['entries'] if entry['category']==source]
+                targets=worldmodel.filtered_entries(self.p,f)
                 for entry in targets:w.addItem(entry['name'],entry['id'])
                 if v and not any(entry['id']==v for entry in targets):w.addItem(tr('Bisheriger oder fehlender Wert')+': '+str(resolve(self.p,v)['name'] if resolve(self.p,v) else v),v)
                 w.setCurrentIndex(max(0,w.findData(v)));w.currentIndexChanged.connect(lambda _:put(w.currentData() or ''))
@@ -754,7 +824,7 @@ class Main(QMainWindow):
             return w
         if t=='Mehrfachauswahl':
             w=QListWidget();source=f.get('source_category')
-            pairs=[(entry['id'],entry['name']) for entry in self.p['entries'] if entry['category']==source] if source else [(opt,opt) for opt in opts];known={id for id,name in pairs}
+            pairs=[(entry['id'],entry['name']) for entry in worldmodel.filtered_entries(self.p,f)] if source else [(opt,opt) for opt in opts];known={id for id,name in pairs}
             for old in v or []:
                 if old not in known:pairs.append((old,(resolve(self.p,old) or {}).get('name',str(old))))
             for id,name in pairs:
@@ -783,7 +853,8 @@ class Main(QMainWindow):
         for f in fields:add_row(f)
         def settings_dialog(r,col):
             if col!=2:return
-            t=table.cellWidget(r,1).currentText();item=table.item(r,2);settings=item.data(Qt.UserRole) or {};dialog=QDialog(d);dialog.setWindowTitle(tr('Feldeinstellungen'));form=QFormLayout(dialog)
+            t=table.cellWidget(r,1).currentText();item=table.item(r,2);settings=item.data(Qt.UserRole) or {};dialog=QDialog(d);dialog.setWindowTitle(tr('Feldeinstellungen'));outer=QVBoxLayout(dialog);scroll=QScrollArea();scroll.setWidgetResizable(True);inner=QWidget();scroll.setWidget(inner);outer.addWidget(scroll);form=QFormLayout(inner);dialog.resize(620,650)
+            group=QLineEdit(settings.get('group',''));column=QComboBox();column.addItem(tr('Linke Spalte'),0);column.addItem(tr('Rechte Spalte'),1);column.setCurrentIndex(settings.get('column',0));required=QCheckBox(tr('Pflichtfeld'));required.setChecked(settings.get('required',False));help_text=QPlainTextEdit(settings.get('help',''));help_text.setMaximumHeight(90);form.addRow(tr('Feldgruppe · optional'),group);form.addRow(tr('Spalte'),column);form.addRow(required);form.addRow(tr('Hilfetext'),help_text)
             options=QPlainTextEdit('\n'.join(settings.get('options',[])));lo=QDoubleSpinBox();hi=QDoubleSpinBox();step=QDoubleSpinBox()
             for widget in [lo,hi,step]:widget.setRange(-1e9,1e9);widget.setDecimals(4)
             lo.setValue(settings.get('min',0));hi.setValue(settings.get('max',100));step.setValue(settings.get('step',1))
@@ -792,6 +863,12 @@ class Main(QMainWindow):
                 for category in self.p['categories']:source.addItem(category['name'],category['id'])
                 if settings.get('source_category') and source.findData(settings['source_category'])<0:source.addItem(tr('Fehlende Kategorie'),settings['source_category'])
                 source.setCurrentIndex(max(0,source.findData(settings.get('source_category'))));form.addRow(tr('Auswahlquelle'),source);form.addRow(tr('Eine Option pro Zeile'),options);options.setEnabled(not source.currentData());source.currentIndexChanged.connect(lambda _:options.setEnabled(not source.currentData()))
+                filter_field=QComboBox();filter_field.addItem(tr('Kein Auswahlfilter'),None);filter_op=QComboBox();filter_op.addItem(tr('Ist gleich'),'eq');filter_op.addItem(tr('Enthält'),'contains');filter_value=QLineEdit((settings.get('source_filter') or {}).get('value',''))
+                def filter_fields(*args):
+                    old=filter_field.currentData() or (settings.get('source_filter') or {}).get('field');filter_field.clear();filter_field.addItem(tr('Kein Auswahlfilter'),None);filter_field.addItem(tr('Anzeigename'),'name');category=next((c for c in self.p['categories'] if c['id']==source.currentData()),{})
+                    for field in category.get('fields',[]):filter_field.addItem(field['name'],field['id'])
+                    filter_field.setCurrentIndex(max(0,filter_field.findData(old)))
+                filter_fields();source.currentIndexChanged.connect(filter_fields);filter_op.setCurrentIndex(max(0,filter_op.findData((settings.get('source_filter') or {}).get('op','eq'))));form.addRow(tr('Auswahlfilter · Feld'),filter_field);form.addRow(tr('Bedingung'),filter_op);form.addRow(tr('Vergleichswert'),filter_value)
             elif t=='Slider':form.addRow(tr('Minimum'),lo);form.addRow(tr('Maximum'),hi);form.addRow(tr('Schrittweite'),step)
             else:form.addRow(QLabel(tr('Dieser Feldtyp benötigt keine zusätzlichen Einstellungen.')))
             def apply():
@@ -799,11 +876,13 @@ class Main(QMainWindow):
                     new_settings={**settings,'options':list(dict.fromkeys(s.strip() for s in options.toPlainText().splitlines() if s.strip()))}
                     if source.currentData():new_settings['source_category']=source.currentData()
                     else:new_settings.pop('source_category',None)
+                    if source.currentData() and filter_field.currentData():new_settings['source_filter']=dict(field=filter_field.currentData(),op=filter_op.currentData(),value=filter_value.text())
+                    else:new_settings.pop('source_filter',None)
                     item.setData(Qt.UserRole,new_settings)
                 elif t=='Slider':
                     if hi.value()<lo.value() or step.value()<=0:self.error('Maximum muss mindestens Minimum sein; Schrittweite muss positiv sein.');return
-                    item.setData(Qt.UserRole,{'min':lo.value(),'max':hi.value(),'step':step.value()})
-                dialog.accept()
+                    item.setData(Qt.UserRole,{**settings,'min':lo.value(),'max':hi.value(),'step':step.value()})
+                extra=item.data(Qt.UserRole) or dict(settings);extra.update(group=group.text().strip(),column=column.currentData(),required=required.isChecked(),help=help_text.toPlainText());item.setData(Qt.UserRole,extra);dialog.accept()
             form.addRow(button(tr('Übernehmen'),apply));dialog.exec()
         table.cellDoubleClicked.connect(settings_dialog)
         row=QHBoxLayout();row.addWidget(button('＋ Feld',lambda:add_row()));row.addWidget(button('Archivieren',lambda:table.removeRow(table.currentRow()) if table.currentRow()>=0 else None))
@@ -866,6 +945,8 @@ class Main(QMainWindow):
                 c.update(name=name.text().strip(),epoch=epoch.value(),year_zero=zero.isChecked(),months=[] if yearonly.isChecked() else [dict(name=months.item(r,0).text(),days=int(months.item(r,1).text())) for r in range(months.rowCount())],week=[s.strip() for s in week.text().split(',') if s.strip()],format=fmt.text(),units={key:w.text() for key,w in units},leaps=[] if yearonly.isChecked() else [{k:int(leaps.item(r,i).text()) for i,k in enumerate(['every','offset','month','days'])} for r in range(leaps.rowCount())]);cal=Calendar(c);cal.validate()
                 if not yearonly.isChecked() and not c['months']:raise ValueError('Mindestens einen Monat anlegen oder nur Jahreszahlen wählen.')
                 for en in self.p['events']:cal.span(en['start'],en['end'])
+                for relation in self.p.get('relationships',[]):
+                    if relation.get('start'):cal.span(relation['start'],relation.get('end',''))
                 for en in self.p['entries']:
                     cat=next(x for x in self.p['categories'] if x['id']==en['category'])
                     for f in cat['fields']:
@@ -923,6 +1004,8 @@ class Main(QMainWindow):
             except Exception as error:self.error(error)
         chart_button.clicked.connect(lambda:stack.setCurrentIndex(0));list_button.clicked.connect(lambda:stack.setCurrentIndex(1));refresh.clicked.connect(update);table.itemDoubleClicked.connect(lambda item:self.open_object(item.data(Qt.UserRole)));table.itemActivated.connect(lambda item:self.open_object(item.data(Qt.UserRole)));page.timeline_refresh=update;table.viewport().installEventFilter(self);update();self.tabs.addTab(page,'Timeline');self.tabs.setCurrentWidget(page);self.breadcrumb.setText('TIMELINE')
     def export_document(self,docs,titles=True,pdf=False,printer=None,cover_kinds=None):
+        self.flush_editors()
+        selected_ids={d['id'] for d in docs};docs=[d for d in authoring.ordered_documents(self.p) if d['id'] in selected_ids]
         doc=QTextDocument();doc.setDefaultFont(QFont('Georgia',14));doc.setMetaInformation(QTextDocument.DocumentTitle,docs[0]['name'] if len(docs)==1 else self.p['name'])
         keys={key for obj in docs for key in re.findall(r'asset:([^\s\"<>]+)',obj['html'])}
         if pdf:keys.update(self.p.get('covers',{}).values())
@@ -940,9 +1023,11 @@ class Main(QMainWindow):
                 cur.setBlockFormat(block);size=QSizeF(image.size());size.scale(available_width,available_height,Qt.KeepAspectRatio);fmt=QTextImageFormat();fmt.setName('asset:'+key);fmt.setWidth(size.width());fmt.setHeight(size.height());cur.insertImage(fmt);cover_count+=1
         for index,o in enumerate(docs):
             if index or cover_count:
-                cur.insertBlock();bf=QTextBlockFormat();bf.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore);cur.setBlockFormat(bf)
+                cur.insertBlock();bf=QTextBlockFormat()
+                if o.get('kind','chapter')!='scene' or not index:bf.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore)
+                cur.setBlockFormat(bf)
             if titles:
-                title=QTextCharFormat();title.setFontFamilies(['Georgia']);title.setFontPointSize(22);title.setFontWeight(QFont.Bold);cur.insertText(o['name'],title);cur.insertBlock(QTextBlockFormat(),QTextCharFormat())
+                title=QTextCharFormat();title.setFontFamilies(['Georgia']);title.setFontPointSize(28 if o.get('kind')=='part' else 16 if o.get('kind')=='scene' else 22);title.setFontWeight(QFont.Bold);cur.insertText(o['name'],title);cur.insertBlock(QTextBlockFormat(),QTextCharFormat())
             cur.insertHtml(render(self.p,o['html']))
         # Remove only link marking; retain italic/bold/font and all non-link formatting.
         block=doc.begin()
@@ -962,20 +1047,17 @@ class Main(QMainWindow):
             cursor=QTextCursor(block);fmt=block.blockFormat();fmt.clearBackground();cursor.setBlockFormat(fmt);block=block.next()
         return doc
     def printing(self):
-        d=QDialog(self);d.setWindowTitle(tr('Drucken & PDF'));l=QVBoxLayout(d);l.setContentsMargins(24,24,24,24);l.setSpacing(14);l.addWidget(QLabel(tr('Kapitel in Projekt-Reihenfolge auswählen:')));ls=QListWidget();ls.viewport().installEventFilter(self);l.addWidget(ls)
-        saved=printing.options(self.p,self.settings);selected=saved.get('chapters')
-        for o in self.p['documents']:
-            i=QListWidgetItem(o['name']);i.setFlags(i.flags()|Qt.ItemIsUserCheckable);i.setCheckState(Qt.Checked if selected is None or o['id'] in selected else Qt.Unchecked);i.setData(Qt.UserRole,o['id']);ls.addItem(i)
+        d=QDialog(self);d.setWindowTitle(tr('Drucken & PDF'));outer=QVBoxLayout(d);outer.setContentsMargins(0,0,0,0);area=QScrollArea();area.setWidgetResizable(True);content=QWidget();area.setWidget(content);outer.addWidget(area);l=QVBoxLayout(content);l.setContentsMargins(24,24,24,24);l.setSpacing(14);l.addWidget(QLabel(tr('Kapitel in Projekt-Reihenfolge auswählen:')));saved=printing.options(self.p,self.settings);selected=saved.get('chapters');ls=print_selection_tree(self.p,selected);ls.viewport().installEventFilter(self);l.addWidget(ls)
         titles=QCheckBox(tr('Kapitelnamen als Überschrift drucken'));titles.setChecked(saved['titles']);l.addWidget(titles);printer=printing.make_printer(self.p,self.settings)
         pdf_covers={}
         for kind,text in [('project','Projektcover im PDF'),('book','Buchcover im PDF')]:
             check=QCheckBox(tr(text));check.setChecked(saved.get('pdf_cover_'+kind,True));check.setEnabled(bool(self.p.get('covers',{}).get(kind)));pdf_covers[kind]=check;l.addWidget(check)
-        def ids():return [ls.item(i).data(Qt.UserRole) for i in range(ls.count()) if ls.item(i).checkState()==Qt.Checked]
+        def ids():return selected_document_ids(ls)
         def remember():
             if printing.persist(self.p,self.settings,printer,titles.isChecked(),ids(),**{'pdf_cover_'+kind:check.isChecked() for kind,check in pdf_covers.items()}):self.changed()
         def doc(for_pdf=False):
             if not ids():self.error(tr('Mindestens ein Kapitel auswählen.'));return None
-            return self.export_document([o for o in self.p['documents'] if o['id'] in ids()],titles.isChecked(),pdf=for_pdf,printer=printer,cover_kinds=[kind for kind,check in pdf_covers.items() if check.isChecked()])
+            return self.export_document([o for o in authoring.ordered_documents(self.p) if o['id'] in ids()],titles.isChecked(),pdf=for_pdf,printer=printer,cover_kinds=[kind for kind,check in pdf_covers.items() if check.isChecked()])
         def page_setup():
             if QPageSetupDialog(printer,d).exec():remember()
         def preview():
@@ -988,7 +1070,7 @@ class Main(QMainWindow):
         def pdf():
             document=doc(True)
             if document is None:return
-            chosen=[o for o in self.p['documents'] if o['id'] in ids()];name=chosen[0]['name'] if len(chosen)==1 else self.p['name'];name=re.sub(r'[<>:"/\\|?*]','_',name).strip(' .') or 'Storynator';directory=Path(self.settings.value('printing/pdf_directory',str(Path.home())));path,_=QFileDialog.getSaveFileName(d,tr('PDF speichern'),str(directory/(name+'.pdf')),'PDF (*.pdf)')
+            chosen=[o for o in authoring.ordered_documents(self.p) if o['id'] in ids()];name=chosen[0]['name'] if len(chosen)==1 else self.p['name'];name=re.sub(r'[<>:"/\\|?*]','_',name).strip(' .') or 'Storynator';directory=Path(self.settings.value('printing/pdf_directory',str(Path.home())));path,_=QFileDialog.getSaveFileName(d,tr('PDF speichern'),str(directory/(name+'.pdf')),'PDF (*.pdf)')
             if path:
                 printing.write_pdf(document,path if path.lower().endswith('.pdf') else path+'.pdf',printer);self.settings.setValue('printing/pdf_directory',str(Path(path).parent));remember();self.statusBar().showMessage(tr('PDF exportiert: ')+path)
         def print_now():
@@ -996,10 +1078,10 @@ class Main(QMainWindow):
             if document is None:return
             printer.setOutputFormat(QPrinter.NativeFormat)
             if QPrintDialog(printer,d).exec():document.print_(printer);remember()
-        ls.itemChanged.connect(lambda _:remember());titles.toggled.connect(lambda _:remember())
+        changes=QTimer(d);changes.setSingleShot(True);changes.timeout.connect(remember);ls.itemChanged.connect(lambda *args:changes.start(120));titles.toggled.connect(lambda _:remember())
         for check in pdf_covers.values():check.toggled.connect(lambda _:remember())
         for text,fn in [('Papier & Seitenränder',page_setup),('Druckvorschau',preview),('PDF-Vorschau · mit Cover',preview_pdf),('PDF exportieren',pdf),('Drucken',print_now)]:l.addWidget(button(text,fn))
-        l.addWidget(button(tr('Übernehmen'),lambda:(remember(),d.accept())));d.resize(560,650);d.exec()
+        l.addWidget(button(tr('Übernehmen'),lambda:(remember(),d.accept())));d.resize(620,650);d.exec();changes.stop();remember()
 
 from PySide6.QtCore import QStandardPaths
 
@@ -1027,6 +1109,12 @@ def main():
             try:
                 import tempfile
                 w.p=load_project(Path(getattr(sys,'_MEIPASS',Path(__file__).parent))/'Beispiel.storynator');w.tabs.clear();w.refresh();w.open_object(w.p['documents'][0]['id']);w.show_timeline()
+                from spelling import dictionary
+                assert dictionary('de_DE').lookup('Geschichte') and dictionary('en_US').lookup('story')
+                parent=w.p['documents'][0];parent['status']='revision';authoring.snapshot(parent,'Smoke checkpoint');w.p['documents'].append(dict(id=uid(),name='Smoke scene',kind='scene',parent=parent['id'],status='draft',html='<p>Scene smoke test.</p>'))
+                if len(w.p['entries'])>=2:
+                    type_id=uid();w.p['relationship_types']=[dict(id=type_id,name='Smoke relation',inverse='Inverse',directed=True)];worldmodel.add_relation(w.p,w.p['entries'][0]['id'],w.p['entries'][1]['id'],type_id)
+                graph=GraphDialog(w,w.p['entries'][0]['id'] if w.p['entries'] else None);QTimer.singleShot(350,graph.accept);graph.exec()
                 with tempfile.TemporaryDirectory() as folder:
                     path=Path(folder)/'smoke.storynator';save_project(w.p,path);assert load_project(path)==w.p
                     first=next(iter(w.p['assets']));w.p['covers'].update(project=first,book=first);save_project(w.p,path);assert load_project(path)['covers']==w.p['covers'];history=BackupStore(Path(folder)/'history');meta=history.create(w.p);assert history.read(meta)==w.p
@@ -1036,7 +1124,7 @@ def main():
                     buffer=QBuffer();buffer.setData(QByteArray(pdf.read_bytes()));buffer.open(QIODevice.ReadOnly);check_pdf=QPdfDocument();check_pdf.load(buffer);assert check_pdf.pageCount()>=3;check_pdf.close();del check_pdf;buffer.close()
                     QTimer.singleShot(600,lambda:[dialog.accept() for dialog in app.topLevelWidgets() if isinstance(dialog,QDialog)])
                     printing.pdf_preview(w,document,printer)
-                w.dirty=False;app.exit(0)
+                w.dirty=False;w.close();app.processEvents();app.exit(0)
             except Exception:
                 import traceback
                 Path(os.environ.get('STORYNATOR_SMOKE_LOG','smoke-error.txt')).write_text(traceback.format_exc(),encoding='utf-8');app.exit(1)
@@ -1048,5 +1136,11 @@ def main():
                 manager=AddonManager(w);manager.import_file(sys.argv[index+1]);manager.exec()
             QTimer.singleShot(0,import_preset)
     elif len(sys.argv)>1 and Path(sys.argv[1]).suffix.lower()=='.storynator':w.open_file(sys.argv[1])
-    sys.exit(app.exec())
+    exit_code=app.exec();w.backup_pool.waitForDone()
+    for child in w.findChildren(QObject):child.blockSignals(True)
+    w.blockSignals(True)
+    from shiboken6 import delete
+    delete(w)
+    from design import cached_icon
+    cached_icon.cache_clear();app.processEvents();sys.exit(exit_code)
 if __name__=='__main__':main()

@@ -1,0 +1,43 @@
+{
+  "version": 3,
+  "name": "Kompatibilitätsprobe",
+  "documents": [
+    {
+      "id": "chapter-fixed",
+      "name": "Prolog",
+      "html": "<p><b>Erhaltener Text</b></p>",
+      "kind": "chapter",
+      "status": "revision",
+      "parent": null
+    },
+    {
+      "id": "scene-fixed",
+      "name": "Szene",
+      "kind": "scene",
+      "status": "draft",
+      "parent": "chapter-fixed",
+      "html": "<p>Szene bleibt erhalten.</p>"
+    }
+  ],
+  "categories": [],
+  "entries": [],
+  "events": [],
+  "assets": {},
+  "calendar": {
+    "name": "Jahre",
+    "year_zero": false,
+    "epoch": 1,
+    "months": [],
+    "week": [],
+    "format": "{year}",
+    "leaps": []
+  },
+  "future_metadata": {
+    "keep": "unbekannte Felder bleiben erhalten"
+  },
+  "project_id": "fixture-v2-project",
+  "covers": {
+    "project": "",
+    "book": ""
+  }
+}
