@@ -162,6 +162,7 @@ Die vorher genannten offenen manuellen Screenreader-/Mehrmonitor-/Langzeittests 
 - [x] Versioniertes, rein deklaratives `.storynator-pack`-Format, atomarer Export, Größenlimit und Validierung.
 - [x] Kategorievorlagen, Kalender, leere Projekt-Starter und Challenges, Weltpakete, Lesefassungen und Welt-Schaufenster.
 - [x] Titel, Autor, Beschreibung, Version, Sprache, Tags und Lizenz.
+- [x] Eigene Paketdefinitionen und Inhaltsauswahl im Projekt speichern; für neue Versionen mit gleicher Paketkennung fortsetzen.
 - [x] Auswahl einzelner Inhalte; private Weltfelder gezielt ausschließen, Abhängigkeiten optional aufnehmen.
 - [x] Freigabevorschau mit vollständigem Textinhalt und Ressourcenliste statt Bild-Binärdaten.
 - [x] Keine Kapitelstände, Kommentare, Feldarchive oder Sitzungsdaten im öffentlichen Paket.

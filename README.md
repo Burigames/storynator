@@ -168,7 +168,7 @@ Dies ist eine funktionierende erste Desktop-Version, keine vollständig ausgerei
 
 Öffne **Addon → Community · Bibliothek & Austausch**.
 
-1. **Paket erstellen:** Pakettyp wählen, Titel/Autor/Lizenz ergänzen und Inhalte ankreuzen. Bei Weltpaketen rechts private Felder ausschließen. Verknüpfte Einträge nur bei Bedarf mit aufnehmen. Die vollständige Freigabevorschau vor dem Speichern kontrollieren.
+1. **Paket erstellen:** Pakettyp wählen, Titel/Autor/Lizenz ergänzen und Inhalte ankreuzen. Bei Weltpaketen rechts private Felder ausschließen. Verknüpfte Einträge nur bei Bedarf mit aufnehmen. Die vollständige Freigabevorschau vor dem Speichern kontrollieren. Eigene Paketdefinitionen werden im Projekt gespeichert. Für spätere Updates unter „Eigene Pakete“ dieselbe Definition wählen und die Version erhöhen; dadurch bleibt die Paketkennung erhalten.
 2. Die `.storynator-pack`-Datei direkt weitergeben. Auf dem anderen PC **Paket hinzufügen**, danach **In Projekt importieren**. Die Auswahl ist vorab prüfbar; vor der Übernahme wird gesichert. Unter Windows lässt sich ein Paket nach Installation auch doppelklicken.
 3. **Online-Katalog laden** kontaktiert GitHub nur nach Bestätigung. Heruntergeladene Pakete bleiben lokal nutzbar. Suche findet auch Tags/Genres. Unterschiedliche Versionen bleiben in der Bibliothek getrennt.
 4. **Projektpaket aktualisieren** gleicht Weltpakete/Starter/Challenges mit ihrem ursprünglichen Import ab. Eigene Änderungen bleiben standardmäßig erhalten; Konflikte sind pro Objekt entscheidbar. Entfernte Inhalte werden nicht automatisch gelöscht. Kalender und reine Kategorievorlagen nutzen stattdessen den geprüften Import als neue Kopie.

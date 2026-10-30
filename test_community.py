@@ -132,3 +132,13 @@ def test_package_cannot_bind_to_unrelated_project_targets(project):
     for mutate in [lambda p:p['entries'][0]['links'].append('outside'),lambda p:p['entries'][0]['values'].update(portrait='outside.png'),lambda p:p['entries'][0].update(html='<a href="story:outside">Other</a>')]:
         bad=copy.deepcopy(s);mutate(bad['payload']['project'])
         with pytest.raises(ValueError):c.validate(bad)
+
+def test_export_identity_and_selection_can_be_resumed(project,tmp_path):
+    from PySide6.QtWidgets import QWidget
+    from community_ui import ExportDialog
+    meta=c.metadata('Mein Paket');meta['release']='1.2';project['community_exports']=[dict(metadata=meta,kind='world',ids=['a'],excluded=['secret'],dependencies=True,cover=False)]
+    class Host(QWidget):
+        def __init__(self):super().__init__();self.p=project
+    h=Host();d=ExportDialog(h);d.previous.setCurrentIndex(1);assert d.export_meta['id']==meta['id'] and d.release.text()=='1.2' and d.deps.isChecked()
+    from community_ui import selected
+    assert selected(d.items)==['a'] and selected(d.fields)==['secret'];d.reject();h.close()

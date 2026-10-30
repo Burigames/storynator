@@ -81,3 +81,5 @@ EN.update({
 })
 
 EN.update({'Inhalte':'Contents','Bilder / Ressourcen':'Images / resources'})
+
+EN.update({'Neues Paket':'New package','Eigene Pakete':'Your packages','Version':'Version'})

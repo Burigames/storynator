@@ -43,12 +43,21 @@ class ExportDialog(QDialog):
     def __init__(self,host):
         super().__init__(host);self.host=host;self.setWindowTitle(tr('Community · Paket erstellen'));self.resize(850,760);layout=QVBoxLayout(self)
         layout.addWidget(label(tr('Etwas weitergeben'),'title'));layout.addWidget(label(tr('Nur ausdrücklich gewählte Inhalte werden geteilt. Prüfe die Vorschau vor dem Export.')))
-        form=QFormLayout();self.kind=ArrowCombo();[self.kind.addItem(tr(v),k) for k,v in KINDS.items()];form.addRow(tr('Pakettyp'),self.kind)
+        form=QFormLayout();self.previous=ArrowCombo();self.previous.addItem(tr('Neues Paket'),None)
+        for record in host.p.get('community_exports',[]):self.previous.addItem(record['metadata']['title']+' · '+record['metadata']['release'],record)
+        form.addRow(tr('Eigene Pakete'),self.previous);self.export_meta=None;self.release=QLineEdit('1.0');form.addRow(tr('Version'),self.release);self.kind=ArrowCombo();[self.kind.addItem(tr(v),k) for k,v in KINDS.items()];form.addRow(tr('Pakettyp'),self.kind)
         self.title=QLineEdit(host.p['name']);self.author=QLineEdit();self.license=ArrowCombo();self.license.setEditable(True);self.license.addItems(['Private Nutzung','CC-BY-4.0','CC-BY-SA-4.0','CC0-1.0']);self.description=QLineEdit();self.language=ArrowCombo();self.language.addItems(['de','en']);self.tags=QLineEdit()
         for n,w in [('Titel',self.title),('Autor',self.author),('Lizenz',self.license),('Beschreibung / Aufgabe',self.description),('Sprache',self.language),('Tags, kommasepariert',self.tags)]:form.addRow(tr(n),w)
         layout.addLayout(form);split=QSplitter();self.items=check_list([]);self.fields=check_list([]);split.addWidget(self.items);split.addWidget(self.fields);layout.addWidget(label(tr('Links: Inhalte auswählen · Rechts: private Felder vom Export ausschließen')));layout.addWidget(split,1)
         self.deps=QCheckBox(tr('Verknüpfte Welt-Einträge ebenfalls aufnehmen (in Vorschau kontrollieren)'));layout.addWidget(self.deps)
-        self.cover=QCheckBox(tr('Buchcover einschließen'));layout.addWidget(self.cover);layout.addWidget(primary(tr('Vorschau & Export'),self.export,'save'));self.kind.currentIndexChanged.connect(self.populate);self.populate();scroll_content(self,layout)
+        self.cover=QCheckBox(tr('Buchcover einschließen'));layout.addWidget(self.cover);layout.addWidget(primary(tr('Vorschau & Export'),self.export,'save'));self.kind.currentIndexChanged.connect(self.populate);self.previous.currentIndexChanged.connect(self.load_export);self.populate();scroll_content(self,layout)
+    def load_export(self):
+        record=self.previous.currentData();self.export_meta=copy.deepcopy(record['metadata']) if record else None
+        if not record:self.release.setText('1.0');return
+        meta=record['metadata'];self.kind.setCurrentIndex(max(0,self.kind.findData(record['kind'])));self.populate();self.title.setText(meta['title']);self.author.setText(meta['author']);self.description.setText(meta['description']);self.license.setCurrentText(meta['license']);self.language.setCurrentText(meta['language']);self.tags.setText(', '.join(meta['tags']));self.release.setText(meta['release'])
+        for ls,key in [(self.items,'ids'),(self.fields,'excluded')]:
+            for i in range(ls.count()):ls.item(i).setCheckState(Qt.Checked if ls.item(i).data(Qt.UserRole) in record.get(key,[]) else Qt.Unchecked)
+        self.deps.setChecked(record.get('dependencies',False));self.cover.setChecked(record.get('cover',False))
     def populate(self):
         kind=self.kind.currentData();self.items.clear();self.fields.clear();group='categories' if kind=='categories' else 'documents' if kind=='reading' else 'entries' if kind in ['world','showcase'] else None
         if group:
@@ -64,10 +73,14 @@ class ExportDialog(QDialog):
             self.host.flush_editors();kind=self.kind.currentData();ids=selected(self.items)
             if kind in ['categories','world','showcase','reading'] and not ids:raise ValueError('Mindestens einen Inhalt auswählen.')
             meta=exchange.metadata(self.title.text(),self.author.text(),self.license.currentText(),self.description.text(),self.language.currentText(),[x.strip() for x in self.tags.text().split(',') if x.strip()])
+            meta['release']=self.release.text().strip()
+            if not meta['release']:raise ValueError('Eine Versionsbezeichnung wird benötigt.')
+            if self.export_meta:meta['id']=self.export_meta['id']
             spec=exchange.create(self.host.p,kind,meta,ids,selected(self.fields),self.deps.isChecked(),self.host.p['covers'].get('book','') if self.cover.isEnabled() and self.cover.isChecked() else '')
             if PreviewDialog(self,spec).exec()!=QDialog.Accepted:return
             path,_=QFileDialog.getSaveFileName(self,tr('Paket speichern'),self.title.text()+'.storynator-pack','Storynator Paket (*.storynator-pack)')
-            if path:exchange.save(spec,path);self.accept()
+            if path:
+                exchange.save(spec,path);records=self.host.p.setdefault('community_exports',[]);records[:]=[r for r in records if r['metadata']['id']!=meta['id']];records.append(dict(metadata=meta,kind=kind,ids=ids,excluded=selected(self.fields),dependencies=self.deps.isChecked(),cover=self.cover.isChecked()));self.host.changed();self.accept()
         except Exception as e:self.host.error(e)
 
 def preview_payload(spec):
