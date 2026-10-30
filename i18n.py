@@ -48,3 +48,36 @@ EN.update({'Randnotizen':'Margin notes','Noch keine Randnotizen.':'No margin not
 EN.update({'Hilfe':'Help','Lizenzen & Quellen':'Licenses & sources'})
 
 EN.update({'Überschrift & Kapiteltext':'Heading & chapter text'})
+
+# Community exchange (project/user text is deliberately left unchanged).
+EN.update({
+'Community · Bibliothek & Austausch':'Community · Library & exchange','Community · Paket erstellen':'Community · Create package',
+'Etwas weitergeben':'Share something','Nur ausdrücklich gewählte Inhalte werden geteilt. Prüfe die Vorschau vor dem Export.':'Only explicitly selected content is shared. Check the preview before exporting.',
+'Pakettyp':'Package type','Kategorievorlagen':'Category templates','Kalender':'Calendar','Projekt-Starter':'Project starter','Weltpaket':'World package','Lesefassung':'Reading copy','Welt-Schaufenster':'World showcase',
+'Titel':'Title','Autor':'Author','Lizenz':'License','Beschreibung / Aufgabe':'Description / prompt','Tags, kommasepariert':'Tags, comma-separated',
+'Links: Inhalte auswählen · Rechts: private Felder vom Export ausschließen':'Left: select content · Right: exclude private fields',
+'Verknüpfte Welt-Einträge ebenfalls aufnehmen (in Vorschau kontrollieren)':'Include linked world entries (check the preview)',
+'Buchcover einschließen':'Include book cover','Vorschau & Export':'Preview & export','Freigabevorschau':'Sharing preview',
+'Kontrolliere Namen, Feldwerte und Texte auf private Inhalte und Spoiler.':'Check names, field values and text for private content and spoilers.',
+'Inhalt freigeben':'Approve content','Importauswahl':'Import selection','Auswahl prüfen':'Review selection',
+'Inhalte einzeln auswählen. Benötigte Kategorievorlagen werden mit übernommen.':'Select individual items. Required category templates are included.',
+'Ideen weitergeben. Welten entdecken.':'Share ideas. Discover worlds.',
+'Lokale Bibliothek · Ohne Konto und ohne Internet nutzbar. Eingebaute Challenges sind freie Starter.':'Local library · Works without an account or internet. Built-in challenges are free starters.',
+'Titel, Autor oder Tags suchen':'Search titles, authors or tags','Alle Pakettypen':'All package types','Alle Sprachen':'All languages','Alle Lizenzen':'All licenses',
+'Paket hinzufügen':'Add package','Paket erstellen':'Create package','In Projekt importieren':'Import into project','Projektpaket aktualisieren':'Update project package',
+'Lesen / Feedback':'Read / feedback','HTML veröffentlichen':'Export HTML','PDF-Leseprobe':'PDF reading copy','Feedback übernehmen':'Import feedback',
+'Aus Bibliothek entfernen':'Remove from library','Einreichung vorbereiten':'Prepare submission','Online-Katalog laden':'Load online catalog','Katalog-Paket herunterladen':'Download catalog package',
+'Online-Katalog':'Online catalog','Zum Laden des Katalogs wird GitHub kontaktiert. Projektinhalte werden nicht übertragen. Fortfahren?':'Loading the catalog contacts GitHub. Project content is not transmitted. Continue?',
+'Versionsvergleich · bestehende Projekte bleiben erhalten':'Version comparison · existing projects are preserved','Weiter':'Continue',
+'Import mit vorheriger Sicherung':'Import with backup','Update-Konflikte · eigene Änderungen schützen':'Update conflicts · protect your changes',
+'Je Objekt entscheiden. Standard: lokale Fassung behalten. Nicht mehr enthaltene Objekte werden nicht gelöscht.':'Decide for each object. Default: keep your local version. Removed objects are not deleted.',
+'Lokale Fassung behalten':'Keep local version','Paketfassung übernehmen':'Use package version','Entscheidungen übernehmen':'Apply decisions',
+'Paket aktualisieren':'Update package','Unveränderte importierte Objekte aktualisieren und ausgewählte Konfliktentscheidungen übernehmen? Vorher wird eine Sicherung erstellt. Nicht mehr enthaltene Objekte bleiben erhalten.':'Update unchanged imported objects and apply your conflict decisions? A backup is created first. Removed objects are retained.',
+'Paket entfernen':'Remove package','Nur aus der lokalen Bibliothek entfernen? Importierte Projektinhalte bleiben erhalten.':'Remove from the local library only? Imported project content is retained.',
+'Offline-Website exportieren':'Export offline website','Feedback-Vorschau':'Feedback preview','Auswahl kommentieren':'Comment on selection','Kommentar entfernen':'Remove comment',
+'Feedback speichern':'Save feedback','Dein Feedback:':'Your feedback:','Dein Anzeigename:':'Your display name:','Ungespeichertes Feedback':'Unsaved feedback',
+'Feedback wurde noch nicht gespeichert. Verwerfen und schließen?':'Feedback has not been saved. Discard and close?',
+'Paket speichern':'Save package'
+})
+
+EN.update({'Inhalte':'Contents','Bilder / Ressourcen':'Images / resources'})

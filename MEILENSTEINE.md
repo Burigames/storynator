@@ -1,4 +1,4 @@
-# Storynator 0.6 – M12 bis M15 und Cover
+# Storynator 0.7 – M12 bis M18 und Cover
 
 ## M12 – Stabile Alltagsversion
 
@@ -155,3 +155,51 @@ Favoriten und Suchansichten gehören zum Projekt. Die Liste zuletzt geöffneter 
 Neue Projekte verwenden Format v3. Dateien v1/v2 werden unter Erhalt von Originalkopien übernommen. Ältere Programmversionen sollen neue Manuskriptstrukturen nicht verändern und können v3 deshalb nicht öffnen. Feste Testdateien aller drei Formate sichern die Rückwärtskompatibilität ab.
 
 Die vorher genannten offenen manuellen Screenreader-/Mehrmonitor-/Langzeittests und die fehlende vertrauenswürdige Codesignatur bleiben offen. M14/M15 ergänzen keine Cloud-Pflicht und keine Laufzeit-Downloads.
+
+# M16–M18 – Community-Austausch (Version 0.7)
+
+## M16 – Inhalte als Pakete teilen
+- [x] Versioniertes, rein deklaratives `.storynator-pack`-Format, atomarer Export, Größenlimit und Validierung.
+- [x] Kategorievorlagen, Kalender, leere Projekt-Starter und Challenges, Weltpakete, Lesefassungen und Welt-Schaufenster.
+- [x] Titel, Autor, Beschreibung, Version, Sprache, Tags und Lizenz.
+- [x] Auswahl einzelner Inhalte; private Weltfelder gezielt ausschließen, Abhängigkeiten optional aufnehmen.
+- [x] Freigabevorschau mit vollständigem Textinhalt und Ressourcenliste statt Bild-Binärdaten.
+- [x] Keine Kapitelstände, Kommentare, Feldarchive oder Sitzungsdaten im öffentlichen Paket.
+- [x] Auswahl vor Import, neue Objekt-/Feld-/Ressourcen-IDs und interne Neuzuordnung.
+- [x] Namenskonflikte sichtbar kennzeichnen; Sicherung vor tatsächlicher Übernahme.
+- [x] Externe Bildquellen, aktive HTML-Inhalte und unbekannte Paketformate abweisen.
+- [x] Bisherige Addons bleiben ausschließlich Kategorievorlagen und erzeugen weiterhin keine Einträge.
+
+Grenzen: Vorlagen enthalten weiterhin ihre sichtbaren Felddefinitionen, Auswahloptionen und Hilfetexte. Diese müssen in der Vorschau ebenfalls geprüft werden. Verknüpfte, nicht freigegebene Ziele werden aus Weltpaketen entfernt beziehungsweise als „Nicht freigegeben“ ersetzt. Ein Kalenderimport wird bei bereits vorhandenen datierten Inhalten abgewiesen, um keine Daten umzudeuten. Ein Starter übernimmt seinen Kalender nur in ein Projekt ohne Welt-/Timeline-/Beziehungsinhalte.
+
+## M17 – Bibliothek und Paketverwaltung
+- [x] „Addon → Community · Bibliothek & Austausch“ mit lokaler Paketbibliothek.
+- [x] Suche sowie Filter nach Pakettyp, Sprache und Lizenz; Genres über Tags suchbar.
+- [x] Paketdetails, Entfernung nur aus der Bibliothek und dauerhafte Offline-Nutzung.
+- [x] Optionaler GitHub-Katalog, ausschließlich auf ausdrückliche Anforderung geladen.
+- [x] Asynchrone begrenzte Downloads mit Timeout, HTTPS-Quellprüfung und SHA-256-Prüfung.
+- [x] Vier initiale geprüfte Katalogpakete, darunter zwei eingebaute Offline-Challenges.
+- [x] Unterschiedliche Paketversionen nebeneinander, Versionshinweise und Inhaltsvergleich beim Download.
+- [x] Weltpaket-/Starter-/Challenge-Updates mit Vergleich gegen den ursprünglichen Import und Konfliktentscheidung pro Objekt.
+- [x] Standard bei Konflikten: lokale Fassung behalten. Entfernte Paketobjekte werden nie automatisch gelöscht.
+- [x] Einreichungsordner mit Paket, Metadaten und Anleitung; GitHub-Issues für Einreichungen und Fehlermeldungen.
+- [x] Windows-Dateizuordnung für `.storynator-pack`.
+
+Grenzen: Kalender und reine Kategorievorlagen werden über den geprüften Import übernommen; ein automatischer Vorlagenabgleich mit Feldmigration ist nicht enthalten. Bei Weltpaket-Updates wird je ganzem Objekt entschieden, nicht je Textabsatz/Feld. Eine ausgewählte Paketfassung ersetzt dieses Objekt einschließlich seiner Felder; zuvor wird gesichert. Es gibt keine Konten, öffentliche Kommentare/Bewertungen oder automatische Veröffentlichung. Katalogänderungen müssen durch den Repository-Betreiber geprüft und aufgenommen werden. Die Einreichungsfunktion verschickt selbst keine Nachricht.
+
+## M18 – Präsentation und Feedback
+- [x] Kapitelbasierte Lesefassung ohne interne Bearbeitungsmetadaten und ohne Welt-Datenbank.
+- [x] Optionales Buchcover, Beschreibung und Autorenangabe.
+- [x] PDF-Leseprobe über denselben formaterhaltenden Export wie das Manuskript; Verknüpfungsmarkierungen neutralisieren.
+- [x] Lesefassung separat öffnen, Textstellen kommentieren, Kommentare entfernen und Feedback-Datei speichern.
+- [x] Rückimport mit Projekt-/Kapitelzuordnung, ursprünglicher Textstelle und Duplikaterkennung.
+- [x] Geänderte Kapitel: Kommentar sichtbar abgelöst statt falscher exakter Zuordnung.
+- [x] Kommentare anschließend im bestehenden Kommentar-/Überarbeitungsdialog bearbeiten und erledigen.
+- [x] Eigenständige statische HTML-Weltenenzyklopädie mit eingebetteten Bildern, Suche, Kategoriefilter und internen Links.
+- [x] HTML-Lesefassung und Welt-Schaufenster mit Cover und Beschreibung; keine Installation für Leser erforderlich.
+- [x] Challenges als leere Starter; Antworten über Lesefassung oder Welt-Schaufenster teilbar.
+
+Grenzen: HTML wird lokal exportiert; Hosting und die Aufnahme in ein öffentliches Schaufenster erfolgen durch den Benutzer beziehungsweise manuell im Katalog. Kein eigener Community-Server, keine Echtzeit-Zusammenarbeit, kein Chat. HTML bewahrt übliche Textformatierung, ist aber kein seitengetreuer Word-Export. Feedback ist eine gesonderte Datei, keine gemeinsame Live-Bearbeitung.
+
+## Prüfung 0.7
+Neue Integrationstests decken Paketrundlauf, Ausschlüsse, Abhängigkeiten, ID-Neuzuordnung, selektiven Import, Kalendergrenzen, reale PDF-Erzeugung, Feedback-Zuordnung, Bibliotheksversionen, Katalogquellen/Prüfsummen, Update-Konflikte, tatsächliche Projektübernahme mit Sicherung und deutsch/englische Dialoglayouts ab. Der Windows-Workflow prüft zusätzlich den Start der Community- und Leseroberfläche in der gebauten EXE.

@@ -1,0 +1,46 @@
+{
+  "format": "storynator.catalog",
+  "version": 1,
+  "packages": [
+    {
+      "id": "storynator.challenge.city",
+      "title": "Eine Stadt voller Geheimnisse",
+      "release": "1.0",
+      "language": "de",
+      "kind": "challenge",
+      "license": "CC0-1.0",
+      "url": "https://raw.githubusercontent.com/Burigames/storynator/main/community/storynator.challenge.city.storynator-pack",
+      "sha256": "f4c6add1d16cb2e62a5607c40f4ff68f663e8a7de90bbc1c9e226ec3ac2f34d3"
+    },
+    {
+      "id": "storynator.challenge.contact",
+      "title": "Erster Kontakt",
+      "release": "1.0",
+      "language": "de",
+      "kind": "challenge",
+      "license": "CC0-1.0",
+      "url": "https://raw.githubusercontent.com/Burigames/storynator/main/community/storynator.challenge.contact.storynator-pack",
+      "sha256": "d92c8142b773bc02a5700dfc585349413395520a912059d38c63b514fab8ebb6"
+    },
+    {
+      "id": "storynator.templates.worldbuilding",
+      "title": "Weltenbau · Kategorievorlagen",
+      "release": "1.0",
+      "language": "de",
+      "kind": "categories",
+      "license": "CC0-1.0",
+      "url": "https://raw.githubusercontent.com/Burigames/storynator/main/community/storynator.templates.worldbuilding.storynator-pack",
+      "sha256": "a64d9525ffd5bec401cf22f1a7e1e4b012380ba9bcdb7f1c30e3ae83e981d366"
+    },
+    {
+      "id": "storynator.calendar.years",
+      "title": "Einfache Jahreszählung",
+      "release": "1.0",
+      "language": "de",
+      "kind": "calendar",
+      "license": "CC0-1.0",
+      "url": "https://raw.githubusercontent.com/Burigames/storynator/main/community/storynator.calendar.years.storynator-pack",
+      "sha256": "7ee8c161e636f9f0d6ff7000bda6abdffae4b246db333c23195b6111a8383eb3"
+    }
+  ]
+}

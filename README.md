@@ -1,6 +1,6 @@
 # Storynator
 
-Eine lokal laufende Desktop-Anwendung zum Schreiben und zur Verwaltung einer Geschichtenwelt. Native Qt-Oberfläche mit Python/PySide6, ohne Webserver, Konten, Telemetrie oder Laufzeit-Netzwerkzugriffe.
+Eine lokal laufende Desktop-Anwendung zum Schreiben und zur Verwaltung einer Geschichtenwelt. Native Qt-Oberfläche mit Python/PySide6, ohne Webserver, Konten oder Telemetrie. Die Schreib- und Projektfunktionen laufen vollständig offline; der optionale Community-Katalog kontaktiert GitHub nur auf ausdrückliche Anforderung.
 
 ## Direkt starten – Windows
 
@@ -163,3 +163,17 @@ Dies ist eine funktionierende erste Desktop-Version, keine vollständig ausgerei
 - Vorlagen haben Feldgruppen und zwei Spalten, aber keinen frei ziehbaren Formular-Designer mit beliebiger Spaltenzahl.
 - Der Beziehungsgraph begrenzt eine Ansicht auf 200 Objekte. Große Welten über Fokusobjekt/Nachbarn eingrenzen.
 - Eine separate Startseitenaktion zum Löschen alter Verlaufseinträge fehlt. Vollständige manuelle Screenreader-, Mehrmonitor- und Windows-Langzeittests stehen weiterhin aus.
+
+## Community-Austausch ab 0.7
+
+Öffne **Addon → Community · Bibliothek & Austausch**.
+
+1. **Paket erstellen:** Pakettyp wählen, Titel/Autor/Lizenz ergänzen und Inhalte ankreuzen. Bei Weltpaketen rechts private Felder ausschließen. Verknüpfte Einträge nur bei Bedarf mit aufnehmen. Die vollständige Freigabevorschau vor dem Speichern kontrollieren.
+2. Die `.storynator-pack`-Datei direkt weitergeben. Auf dem anderen PC **Paket hinzufügen**, danach **In Projekt importieren**. Die Auswahl ist vorab prüfbar; vor der Übernahme wird gesichert. Unter Windows lässt sich ein Paket nach Installation auch doppelklicken.
+3. **Online-Katalog laden** kontaktiert GitHub nur nach Bestätigung. Heruntergeladene Pakete bleiben lokal nutzbar. Suche findet auch Tags/Genres. Unterschiedliche Versionen bleiben in der Bibliothek getrennt.
+4. **Projektpaket aktualisieren** gleicht Weltpakete/Starter/Challenges mit ihrem ursprünglichen Import ab. Eigene Änderungen bleiben standardmäßig erhalten; Konflikte sind pro Objekt entscheidbar. Entfernte Inhalte werden nicht automatisch gelöscht. Kalender und reine Kategorievorlagen nutzen stattdessen den geprüften Import als neue Kopie.
+5. Für Feedback eine **Lesefassung** exportieren. Empfänger öffnen diese über **Lesen / Feedback**, markieren Text, kommentieren und speichern `.storynator-feedback`. Im ursprünglichen Projekt **Feedback übernehmen** wählen. Geänderte Textfassungen erzeugen sichtbar abgelöste Kommentare. Bearbeiten und Erledigen erfolgen über **Manuskript → Kommentare & Lesezeichen**.
+6. **PDF-Leseprobe** bewahrt Manuskriptformatierung und kann ein Buchcover enthalten. **HTML veröffentlichen** erzeugt eine lokale, eigenständig im Browser nutzbare Datei mit Bildern. Weltpakete bieten darin Suche, Kategoriefilter und interne Links. Der Knopf lädt die Datei nicht automatisch ins Internet hoch.
+7. **Einreichung vorbereiten** erzeugt einen separaten Ordner mit Paket und Anleitung für eine manuell zu prüfende GitHub-Einreichung. Es wird nichts automatisch versendet. Nutzungsrechte, Vorlagenquellen und Spoiler vor einer Veröffentlichung selbst prüfen.
+
+Die Anwendung bleibt offline nutzbar. Community-Bibliothek und Katalogcache liegen lokal in den Anwendungsdaten. Importierte Inhalte und Importzuordnung gehören zur portablen Projektdatei. Das Projektformat bleibt v3; Austauschpakete und Feedback verwenden eigene Versionskennungen. Umfang und Grenzen sind in [MEILENSTEINE.md](MEILENSTEINE.md) dokumentiert.

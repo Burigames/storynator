@@ -381,7 +381,8 @@ class Main(QMainWindow):
         for name,fn in [('Umbenennen',self.rename),('Löschen',self.delete),('Nach oben',lambda:self.move(-1)),('Nach unten',lambda:self.move(1))]:m.addAction(tr(name)).triggered.connect(fn)
         m=self.menuBar().addMenu(tr('Ansicht'));m.addAction(tr('Einstellungen'),self.preferences);m.addAction('Editor',lambda:self.navigate('editor'));m.addAction('Timeline',lambda:self.navigate('timeline'));m.addAction(tr('Welt'),lambda:self.navigate('world'));m.addAction(tr('Projektkalender'),self.calendar)
         a=m.addAction(tr('Fokusmodus'));a.setShortcut('F11');a.triggered.connect(self.toggle_focus)
-        m=self.menuBar().addMenu('Addon');m.addAction(tr('Addons verwalten'),lambda:AddonManager(self).exec());m.addAction(tr('Kategorien als Preset exportieren'),lambda:export_preset(self))
+        from community_ui import CommunityDialog
+        m=self.menuBar().addMenu('Addon');m.addAction(tr('Addons verwalten'),lambda:AddonManager(self).exec());m.addAction(tr('Kategorien als Preset exportieren'),lambda:export_preset(self));m.addAction(tr('Community · Bibliothek & Austausch'),lambda:CommunityDialog(self).exec())
         m=self.menuBar().addMenu(tr('Hilfe'));m.addAction(tr('Lizenzen & Quellen'),lambda:license_dialog(self))
     def select_navigation(self,id):
         iterator=QTreeWidgetItemIterator(self.nav)
@@ -1005,47 +1006,7 @@ class Main(QMainWindow):
         chart_button.clicked.connect(lambda:stack.setCurrentIndex(0));list_button.clicked.connect(lambda:stack.setCurrentIndex(1));refresh.clicked.connect(update);table.itemDoubleClicked.connect(lambda item:self.open_object(item.data(Qt.UserRole)));table.itemActivated.connect(lambda item:self.open_object(item.data(Qt.UserRole)));page.timeline_refresh=update;table.viewport().installEventFilter(self);update();self.tabs.addTab(page,'Timeline');self.tabs.setCurrentWidget(page);self.breadcrumb.setText('TIMELINE')
     def export_document(self,docs,titles=True,pdf=False,printer=None,cover_kinds=None):
         self.flush_editors()
-        selected_ids={d['id'] for d in docs};docs=[d for d in authoring.ordered_documents(self.p) if d['id'] in selected_ids]
-        doc=QTextDocument();doc.setDefaultFont(QFont('Georgia',14));doc.setMetaInformation(QTextDocument.DocumentTitle,docs[0]['name'] if len(docs)==1 else self.p['name'])
-        keys={key for obj in docs for key in re.findall(r'asset:([^\s\"<>]+)',obj['html'])}
-        if pdf:keys.update(self.p.get('covers',{}).values())
-        for key in keys:
-            if key in self.p['assets']:doc.addResource(QTextDocument.ImageResource,QUrl('asset:'+key),image_from_asset(self.p,key,4096))
-        cur=QTextCursor(doc);cover_count=0
-        if pdf:
-            printer=printer or printing.make_printer(self.p,self.settings);rect=printer.pageLayout().paintRectPoints();doc.setPageSize(QSizeF(rect.width(),rect.height()));available_width=max(1,rect.width()-2*doc.documentMargin());available_height=max(1,rect.height()-2*doc.documentMargin()-35)
-            for kind in cover_kinds if cover_kinds is not None else ['project','book']:
-                key=self.p.get('covers',{}).get(kind);image=image_from_asset(self.p,key,4096) if key else QImage()
-                if image.isNull():continue
-                if cover_count:cur.insertBlock()
-                block=QTextBlockFormat();block.setAlignment(Qt.AlignCenter)
-                if cover_count:block.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore)
-                cur.setBlockFormat(block);size=QSizeF(image.size());size.scale(available_width,available_height,Qt.KeepAspectRatio);fmt=QTextImageFormat();fmt.setName('asset:'+key);fmt.setWidth(size.width());fmt.setHeight(size.height());cur.insertImage(fmt);cover_count+=1
-        for index,o in enumerate(docs):
-            if index or cover_count:
-                cur.insertBlock();bf=QTextBlockFormat()
-                if o.get('kind','chapter')!='scene' or not index:bf.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore)
-                cur.setBlockFormat(bf)
-            if titles:
-                title=QTextCharFormat();title.setFontFamilies(['Georgia']);title.setFontPointSize(28 if o.get('kind')=='part' else 16 if o.get('kind')=='scene' else 22);title.setFontWeight(QFont.Bold);cur.insertText(o['name'],title);cur.insertBlock(QTextBlockFormat(),QTextCharFormat())
-            cur.insertHtml(render(self.p,o['html']))
-        # Remove only link marking; retain italic/bold/font and all non-link formatting.
-        block=doc.begin()
-        while block.isValid():
-            it=block.begin()
-            while not it.atEnd():
-                f=it.fragment()
-                if f.isValid() and f.charFormat().isAnchor():
-                    cur=QTextCursor(doc);cur.setPosition(f.position());cur.setPosition(f.position()+f.length(),QTextCursor.KeepAnchor);fmt=f.charFormat();fmt.setAnchor(False);fmt.setAnchorHref('')
-                    if fmt.foreground().color().name().lower()=='#7461bb':fmt.setForeground(QColor('black'));fmt.setFontUnderline(False)
-                    cur.setCharFormat(fmt)
-                it+=1
-            block=block.next()
-        frame=doc.rootFrame();fmt=frame.frameFormat();fmt.setBackground(QColor('white'));frame.setFrameFormat(fmt)
-        block=doc.begin()
-        while block.isValid():
-            cursor=QTextCursor(block);fmt=block.blockFormat();fmt.clearBackground();cursor.setBlockFormat(fmt);block=block.next()
-        return doc
+        return printing.manuscript_document(self.p,docs,titles,pdf,printer,cover_kinds,self.settings)
     def printing(self):
         d=QDialog(self);d.setWindowTitle(tr('Drucken & PDF'));outer=QVBoxLayout(d);outer.setContentsMargins(0,0,0,0);area=QScrollArea();area.setWidgetResizable(True);content=QWidget();area.setWidget(content);outer.addWidget(area);l=QVBoxLayout(content);l.setContentsMargins(24,24,24,24);l.setSpacing(14);l.addWidget(QLabel(tr('Kapitel in Projekt-Reihenfolge auswählen:')));saved=printing.options(self.p,self.settings);selected=saved.get('chapters');ls=print_selection_tree(self.p,selected);ls.viewport().installEventFilter(self);l.addWidget(ls)
         titles=QCheckBox(tr('Kapitelnamen als Überschrift drucken'));titles.setChecked(saved['titles']);l.addWidget(titles);printer=printing.make_printer(self.p,self.settings)
@@ -1124,11 +1085,22 @@ def main():
                     buffer=QBuffer();buffer.setData(QByteArray(pdf.read_bytes()));buffer.open(QIODevice.ReadOnly);check_pdf=QPdfDocument();check_pdf.load(buffer);assert check_pdf.pageCount()>=3;check_pdf.close();del check_pdf;buffer.close()
                     QTimer.singleShot(600,lambda:[dialog.accept() for dialog in app.topLevelWidgets() if isinstance(dialog,QDialog)])
                     printing.pdf_preview(w,document,printer)
+                from community_ui import CommunityDialog,ReaderDialog
+                import community as exchange
+                manager=CommunityDialog(w);assert manager.list.count()>=2;manager.accept()
+                sample=exchange.create(w.p,'reading',exchange.metadata('Smoke reading'),[w.p['documents'][0]['id']]);reader=ReaderDialog(w,sample);assert reader.docs.count()==1;reader.accept()
                 w.dirty=False;w.close();app.processEvents();app.exit(0)
             except Exception:
                 import traceback
                 Path(os.environ.get('STORYNATOR_SMOKE_LOG','smoke-error.txt')).write_text(traceback.format_exc(),encoding='utf-8');app.exit(1)
         QTimer.singleShot(400,check)
+    elif '--import-pack' in sys.argv or len(sys.argv)>1 and Path(sys.argv[1]).suffix.lower()=='.storynator-pack':
+        index=sys.argv.index('--import-pack')+1 if '--import-pack' in sys.argv else 1
+        if index<len(sys.argv):
+            def import_pack():
+                from community_ui import CommunityDialog
+                manager=CommunityDialog(w);manager.add(sys.argv[index]);manager.exec()
+            QTimer.singleShot(0,import_pack)
     elif '--import-preset' in sys.argv:
         index=sys.argv.index('--import-preset')
         if index+1<len(sys.argv):

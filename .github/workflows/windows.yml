@@ -81,9 +81,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $tag = "v0.6.$env:GITHUB_RUN_NUMBER"
+          $tag = "v0.7.$env:GITHUB_RUN_NUMBER"
           Get-FileHash dist/Storynator-Setup.exe,dist/Storynator-Portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content dist/SHA256SUMS.txt
-          $notes = "Storynator 0.6: M14/M15 mit Teilen, Kapiteln, Szenen, Drag-and-drop, Status, Suchen/Ersetzen, Kommentaren, Lesezeichen, Kapitelstaenden, Schreibzielen und Offline-Rechtschreibung Deutsch/Englisch. Weltvorlagen mit Gruppen, Spalten, Pflichtfeldern und Auswahlfiltern; Beziehungstypen, Rueckverweise, Geltungszeiten und Graph. Favoriten, gespeicherte Ansichten, Duplikate und Kategorieuebertragung mit Feldarchiv. Projektformat v3: alte Dateien werden vor Uebernahme gesichert. Projekt-/Buchcover weiterhin nur im PDF. Windows-Tests, Skalierung, EXE-Start mit Woerterbuechern und Installation geprueft. Setup ausfuehren, kein Python erforderlich. Weiterhin unsigniert."
+          $notes = "Storynator 0.7: Community-Pakete fuer Kategorien, Kalender, Starter, Weltwissen, Lesefassungen und Challenges. Gepruefter Import mit neuen IDs und Sicherung. Lokale Bibliothek, optionaler GitHub-Katalog mit Pruefsummen, Versionsvergleich und Weltpaket-Updates mit Konfliktentscheidungen. Leseproben als PDF/HTML, Offline-Weltenenzyklopaedie und Feedback-Dateien. Rueckmeldungen bei geaendertem Text bleiben als unsicher zugeordnet sichtbar. Kategorie-Presets bleiben vorlagenbasiert. Keine Konten, keine Echtzeit-Zusammenarbeit. Weiterhin unsigniert. Setup ausfuehren, kein Python erforderlich."
           gh release create $tag dist/Storynator-Setup.exe dist/Storynator-Portable.zip dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
       - uses: actions/upload-artifact@v4
         if: success()

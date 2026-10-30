@@ -1,7 +1,7 @@
 [Setup]
 AppId={{6A746520-8499-4779-99F7-2C5C306EC683}
 AppName=Storynator
-AppVersion=0.6.0
+AppVersion=0.7.0
 AppPublisher=Burigames
 DefaultDirName={localappdata}\Programs\Storynator
 DefaultGroupName=Storynator
@@ -38,5 +38,9 @@ Root: HKCU; Subkey: "Software\Classes\.storynator-preset\OpenWithProgids"; Value
 Root: HKCU; Subkey: "Software\Classes\Storynator.Preset"; ValueType: string; ValueData: "Storynator category preset"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\Storynator.Preset\DefaultIcon"; ValueType: string; ValueData: """{app}\Storynator.exe"",0"
 Root: HKCU; Subkey: "Software\Classes\Storynator.Preset\shell\open\command"; ValueType: string; ValueData: """{app}\Storynator.exe"" --import-preset ""%1"""
+Root: HKCU; Subkey: "Software\Classes\.storynator-pack"; ValueType: string; ValueData: "Storynator.Package"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\Storynator.Package"; ValueType: string; ValueData: "Storynator community package"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Storynator.Package\DefaultIcon"; ValueType: string; ValueData: """{app}\Storynator.exe"",0"
+Root: HKCU; Subkey: "Software\Classes\Storynator.Package\shell\open\command"; ValueType: string; ValueData: """{app}\Storynator.exe"" --import-pack ""%1"""
 [Run]
 Filename: "{app}\Storynator.exe"; Description: "Storynator"; Flags: nowait skipifsilent

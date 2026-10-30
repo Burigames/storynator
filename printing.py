@@ -47,3 +47,52 @@ def pdf_preview(host,document,printer):
         path=Path(folder)/'preview.pdf';write_pdf(document,path,printer);data=QByteArray(path.read_bytes());buffer=QBuffer(data);buffer.open(QIODevice.ReadOnly);pdf=QPdfDocument();pdf.load(buffer)
         d=QDialog(host);d.setWindowTitle(tr('PDF-Vorschau · mit Cover'));layout=QVBoxLayout(d);view=QPdfView(d);view.setDocument(pdf);view.setPageMode(QPdfView.PageMode.MultiPage);view.setZoomMode(QPdfView.ZoomMode.FitToWidth);layout.addWidget(view);close=QPushButton(tr('Schließen'));close.clicked.connect(d.accept);layout.addWidget(close);d.resize(800,850);d.exec();from shiboken6 import delete
         delete(d);pdf.close();del pdf;buffer.close()
+
+
+def manuscript_document(project,docs,titles=True,pdf=False,printer=None,cover_kinds=None,settings=None):
+    import re,authoring
+    from core import render
+    from media import image_from_asset
+    from PySide6.QtCore import Qt,QUrl
+    from PySide6.QtGui import QFont,QImage,QTextCursor,QTextImageFormat,QTextBlockFormat,QTextCharFormat,QTextFormat,QColor
+    selected_ids={d['id'] for d in docs};docs=[d for d in authoring.ordered_documents(project) if d['id'] in selected_ids]
+    doc=QTextDocument();doc.setDefaultFont(QFont('Georgia',14));doc.setMetaInformation(QTextDocument.DocumentTitle,docs[0]['name'] if len(docs)==1 else project['name'])
+    keys={key for obj in docs for key in re.findall(r'asset:([^\s\"<>]+)',obj['html'])}
+    if pdf:keys.update(project.get('covers',{}).values())
+    for key in keys:
+        if key in project['assets']:doc.addResource(QTextDocument.ImageResource,QUrl('asset:'+key),image_from_asset(project,key,4096))
+    cur=QTextCursor(doc);cover_count=0
+    if pdf:
+        printer=printer or make_printer(project,settings);rect=printer.pageLayout().paintRectPoints();doc.setPageSize(QSizeF(rect.width(),rect.height()));available_width=max(1,rect.width()-2*doc.documentMargin());available_height=max(1,rect.height()-2*doc.documentMargin()-35)
+        for kind in cover_kinds if cover_kinds is not None else ['project','book']:
+            key=project.get('covers',{}).get(kind);image=image_from_asset(project,key,4096) if key else QImage()
+            if image.isNull():continue
+            if cover_count:cur.insertBlock()
+            block=QTextBlockFormat();block.setAlignment(Qt.AlignCenter)
+            if cover_count:block.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore)
+            cur.setBlockFormat(block);size=QSizeF(image.size());size.scale(available_width,available_height,Qt.KeepAspectRatio);fmt=QTextImageFormat();fmt.setName('asset:'+key);fmt.setWidth(size.width());fmt.setHeight(size.height());cur.insertImage(fmt);cover_count+=1
+    for index,o in enumerate(docs):
+        if index or cover_count:
+            cur.insertBlock();bf=QTextBlockFormat()
+            if o.get('kind','chapter')!='scene' or not index:bf.setPageBreakPolicy(QTextFormat.PageBreak_AlwaysBefore)
+            cur.setBlockFormat(bf)
+        if titles:
+            title=QTextCharFormat();title.setFontFamilies(['Georgia']);title.setFontPointSize(28 if o.get('kind')=='part' else 16 if o.get('kind')=='scene' else 22);title.setFontWeight(QFont.Bold);cur.insertText(o['name'],title);cur.insertBlock(QTextBlockFormat(),QTextCharFormat())
+        cur.insertHtml(render(project,o['html']))
+    # Remove only link marking; retain italic/bold/font and all non-link formatting.
+    block=doc.begin()
+    while block.isValid():
+        it=block.begin()
+        while not it.atEnd():
+            f=it.fragment()
+            if f.isValid() and f.charFormat().isAnchor():
+                cur=QTextCursor(doc);cur.setPosition(f.position());cur.setPosition(f.position()+f.length(),QTextCursor.KeepAnchor);fmt=f.charFormat();fmt.setAnchor(False);fmt.setAnchorHref('')
+                if fmt.foreground().color().name().lower()=='#7461bb':fmt.setForeground(QColor('black'));fmt.setFontUnderline(False)
+                cur.setCharFormat(fmt)
+            it+=1
+        block=block.next()
+    frame=doc.rootFrame();fmt=frame.frameFormat();fmt.setBackground(QColor('white'));frame.setFrameFormat(fmt)
+    block=doc.begin()
+    while block.isValid():
+        cursor=QTextCursor(block);fmt=block.blockFormat();fmt.clearBackground();cursor.setBlockFormat(fmt);block=block.next()
+    return doc
