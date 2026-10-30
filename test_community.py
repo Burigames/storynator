@@ -126,3 +126,9 @@ def test_feedback_repeated_exports_have_stable_identity(project):
     d=project['documents'][0];s=c.create(project,'reading',c.metadata('Lesen'),[d['id']]);notes=[dict(document=d['id'],start=0,end=5,text='Gut')]
     first=r.feedback(s,notes,'Leser');second=r.feedback(s,notes,'Leser');assert first==second
     q,_,_=r.import_feedback(project,first);_,n,_=r.import_feedback(q,second);assert n==0
+
+def test_package_cannot_bind_to_unrelated_project_targets(project):
+    s=c.create(project,'world',c.metadata('Welt'),['a'],include_dependencies=True)
+    for mutate in [lambda p:p['entries'][0]['links'].append('outside'),lambda p:p['entries'][0]['values'].update(portrait='outside.png'),lambda p:p['entries'][0].update(html='<a href="story:outside">Other</a>')]:
+        bad=copy.deepcopy(s);mutate(bad['payload']['project'])
+        with pytest.raises(ValueError):c.validate(bad)

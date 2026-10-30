@@ -49,6 +49,9 @@ def create(p,kind,meta,ids=(),excluded_fields=(),include_dependencies=False,cove
                 if more<=cats:break
                 cats |= more
             q['categories']=[dict(id=c['id'],name=c['name'],fields=[copy.deepcopy(f) for f in c['fields'] if f['id'] not in excluded]) for c in p['categories'] if c['id'] in cats]
+            for cat in q['categories']:
+                for field in cat['fields']:
+                    if field.get('source_filter',{}).get('field') in excluded:field.pop('source_filter',None)
             for e in q['entries']:
                 e['values']={k:v for k,v in e['values'].items() if k not in excluded};e['links']=[k for k in e.get('links',[]) if k in chosen]
             q['relationships']=[copy.deepcopy(r) for r in p.get('relationships',[]) if r['source'] in chosen and r['target'] in chosen]
@@ -133,6 +136,32 @@ def _validate(spec):
             elif isinstance(value,dict):
                 for item in value.values():inspect(item)
         inspect(p)
+        ids={o['id'] for group in ['entries','documents'] for o in p[group]};cats={c['id']:c for c in p['categories']};types={t['id'] for t in p.get('relationship_types',[])}
+        for c in cats.values():
+            for f in c['fields']:
+                if f.get('source_category') and f['source_category'] not in cats:raise ValueError('Quellkategorie fehlt im Paket.')
+        for e in p['entries']:
+            if e['category'] not in cats or any(id not in ids for id in e['links']):raise ValueError('Verknüpfungsziel fehlt im Paket.')
+            for f in cats[e['category']]['fields']:
+                value=e['values'].get(f['id'])
+                if f['type'] in ['Bild','Galerie'] and value:
+                    values=value if isinstance(value,list) else [value]
+                    if any(not isinstance(v,str) or v not in p['assets'] for v in values):raise ValueError('Bild fehlt im Paket.')
+                if (f['type']=='Verknüpfung' or f.get('source_category')) and value:
+                    values=value if isinstance(value,list) else [value]
+                    if any(not isinstance(v,str) or v not in ids for v in values):raise ValueError('Feldauswahl-Ziel fehlt im Paket.')
+        for relation in p.get('relationships',[]):
+            if relation['source'] not in ids or relation['target'] not in ids or relation['type'] not in types:raise ValueError('Beziehungsziel oder Typ fehlt im Paket.')
+        def links(value):
+            if isinstance(value,str):
+                for id in re.findall(r'href=[\"\']story:([^\"\']+)',value):
+                    if id not in ids:raise ValueError('Textverknüpfung zeigt außerhalb des Pakets.')
+            elif isinstance(value,list):
+                for item in value:links(item)
+            elif isinstance(value,dict):
+                for item in value.values():links(item)
+        links(p)
+        if any(k and k not in p['assets'] for k in p['covers'].values()):raise ValueError('Cover fehlt im Paket.')
         for value in p['assets'].values():base64.b64decode(value,validate=True)
     return copy.deepcopy(spec)
 
