@@ -77,7 +77,11 @@ jobs:
           $process = Start-Process "$install/Storynator.exe" -ArgumentList '--smoke-test' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Installed application test failed' }
           $project = Join-Path $install 'UserProject.storynator'
-          Copy-Item Beispiel.storynator $project
+          python -c "import sys; from core import load_project,save_project; save_project(load_project('Beispiel.storynator'),sys.argv[1])" $project
+          if ($LASTEXITCODE -ne 0) { throw 'Update fixture failed' }
+          $legacyProject = Join-Path $install 'LegacyUserProject.storynator'
+          Copy-Item Beispiel.storynator $legacyProject
+          $legacyBefore = (Get-FileHash $legacyProject -Algorithm SHA256).Hash
           $before = (Get-FileHash $project -Algorithm SHA256).Hash
           $process = Start-Process dist/Storynator-Setup.exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/STORYNATORUPDATE=1', "/STORYNATORPROJECT=`"$project`"", "/DIR=`"$install`"") -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'In-place upgrade failed' }
@@ -93,6 +97,7 @@ jobs:
           if (-not $restarted.CloseMainWindow()) { throw 'Updated application has no window' }
           if (-not $restarted.WaitForExit(30000)) { throw 'Updated application failed to close' }
           if ((Get-FileHash $project -Algorithm SHA256).Hash -ne $before) { throw 'Upgrade changed the user project' }
+          if ((Get-FileHash $legacyProject -Algorithm SHA256).Hash -ne $legacyBefore) { throw 'Upgrade changed the legacy project' }
           $process = Start-Process "$install/Storynator.exe" -ArgumentList '--smoke-test' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Upgraded executable failed' }
       - name: Publish Windows downloads
