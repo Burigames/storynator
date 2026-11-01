@@ -281,3 +281,16 @@ Die Sprachprüfung vergleicht Wörter mit dem Lexikon und den manuell definierte
 - [x] Scrollbare Werkzeugbereiche und Darstellung im vorhandenen Theme.
 
 Das Projektformat bleibt v3. Karten, Bilder, Markierungen und Wörterbücher gehören vollständig zur `.storynator`-Datei; die optionalen Sicherungen bleiben wie bisher lokal separat. Starter enthalten leere Manuskriptstruktur, Kategorien und Kalender. Für die Weitergabe einer vollständig ausgearbeiteten Welt einschließlich Karten und Sprachlexika dient die vollständige Projektdatei.
+
+### 19.6 Programmupdates über GitHub
+- [x] Updatesymbol in der Kopfzeile und „Hilfe → Updates prüfen“.
+- [x] Neueste stabile GitHub-Veröffentlichung auf ausdrückliche Anforderung prüfen; keine Start-/Hintergrundabfrage ohne Klick.
+- [x] Exakte veröffentlichte Buildversion in EXE, Installer und Updatebeschreibung; numerischer Versionsvergleich und keine Downgrades.
+- [x] Begrenzte asynchrone HTTPS-Downloads mit erlaubten GitHub-Umleitungen, Timeout, Fortschritt und Abbruch.
+- [x] Größe und SHA-256 prüfen; unvollständige/beschädigte Dateien nicht übernehmen oder ausführen.
+- [x] Projekt sichern, ungespeicherte Änderungen behandeln, laufende Anwendung schließen und Installer starten.
+- [x] Vorhandene Installation aktualisieren, ohne Deinstallation; Neustart mit gespeichertem Projekt.
+- [x] Prüfsummen-/Versionsdatei `update.json` im Release-Workflow erzeugen und mit veröffentlichen.
+- [x] Windows-Workflow prüft echte erneute Installation, unveränderte Projektdatei sowie automatischen Neustart und erneutes Öffnen des Projekts.
+
+Ältere Programmversionen benötigen einmal den neuen Installer, der über die vorhandene Installation ausgeführt werden kann. Portable Ausgaben wechseln beim Update zur installierten Windows-Ausgabe. Verbindungs-, Prüf- und Startfehler lassen das laufende Programm erhalten. Weitere offene Instanzen können vom Installer zum Schließen aufgefordert werden; sie werden nicht erzwungen beendet.

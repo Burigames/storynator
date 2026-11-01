@@ -1,6 +1,6 @@
 # Storynator
 
-Eine lokal laufende Desktop-Anwendung zum Schreiben und zur Verwaltung einer Geschichtenwelt. Native Qt-Oberfläche mit Python/PySide6, ohne Webserver, Konten oder Telemetrie. Die Schreib- und Projektfunktionen laufen vollständig offline; der optionale Community-Katalog kontaktiert GitHub nur auf ausdrückliche Anforderung.
+Eine lokal laufende Desktop-Anwendung zum Schreiben und zur Verwaltung einer Geschichtenwelt. Native Qt-Oberfläche mit Python/PySide6, ohne Webserver, Konten oder Telemetrie. Die Schreib- und Projektfunktionen laufen vollständig offline; Community-Katalog und Updateprüfung kontaktieren GitHub nur auf ausdrückliche Anforderung.
 
 ## Direkt starten – Windows
 
@@ -195,3 +195,13 @@ Archivierte und unbekannte Feldwerte bleiben lokal erhalten, werden aber beim Er
 - **Weltkarten:** „Welt → Interaktive Weltkarte“, **Karte hinzufügen**, Namen und Bild wählen. **Markierungen bearbeiten** einschalten, auf die Karte klicken oder eine Markierung ziehen. Über **@ Verknüpfen** einen Eintrag zuordnen. Mausrad zoomt; Ziehen verschiebt die Karte. Doppelklick auf einen Punkt öffnet den verknüpften Eintrag. Alle Bilder und Positionen werden im Projekt gespeichert.
 
 Alle fünf Werkzeuge funktionieren offline. Wörterbücher und Weltkarten werden in der vorhandenen `.storynator`-Datei mitgespeichert; es werden keine ursprünglichen Bildpfade benötigt. Einzelheiten und Importgrenzen stehen unter M19 in [MEILENSTEINE.md](MEILENSTEINE.md).
+
+## Programm aktualisieren
+
+Oben neben Suche/Drucken befindet sich das **Updatesymbol mit den kreisförmigen Pfeilen**. Alternativ: **Hilfe → Updates prüfen**. Ein Klick prüft die neueste stabile GitHub-Veröffentlichung. Bei einer neueren Version **Update installieren** wählen. Der Download erfolgt im Hintergrund mit Fortschrittsanzeige; Größe und SHA-256 werden vor dem Start geprüft.
+
+Vor dem Installerstart wird das Projekt gesichert. Ungespeicherte Änderungen lassen sich wie gewohnt speichern; Abbrechen lässt Storynator geöffnet. Der Installer aktualisiert die bestehende Installation, ohne sie vorher zu deinstallieren. Danach startet Storynator neu und öffnet das zuvor gespeicherte Projekt. Weitere laufende Instanzen gegebenenfalls schließen, falls der Installer belegte Dateien meldet.
+
+**Einmaliger Einstieg für ältere Versionen:** Den aktuellen Setup-Installer über die vorhandene Installation ausführen. Eine vorherige Deinstallation ist auch dabei nicht erforderlich. Anschließend steht das Updatesymbol bereit.
+
+Die Prüfung erfolgt ausschließlich auf Anforderung; ohne Internet bleibt die übrige Anwendung nutzbar. Eine portable Ausgabe wechselt beim Update zur regulären Windows-Installation; die ursprüngliche ZIP-/Portable-Kopie wird dabei nicht überschrieben. Im Python-Quellbetrieb ist die direkte Windows-Installation deaktiviert. Das Update ändert das Projektformat nicht. Die Anwendung bleibt wie bisher unsigniert; eine Prüfsumme ist keine Windows-Codesignatur.

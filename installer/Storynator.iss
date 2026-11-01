@@ -1,7 +1,13 @@
+#ifndef StorynatorVersion
+#define StorynatorVersion "0.8.1"
+#endif
 [Setup]
 AppId={{6A746520-8499-4779-99F7-2C5C306EC683}
 AppName=Storynator
-AppVersion=0.8.0
+AppVersion={#StorynatorVersion}
+UsePreviousAppDir=yes
+CloseApplications=yes
+RestartApplications=no
 AppPublisher=Burigames
 DefaultDirName={localappdata}\Programs\Storynator
 DefaultGroupName=Storynator
@@ -43,4 +49,11 @@ Root: HKCU; Subkey: "Software\Classes\Storynator.Package"; ValueType: string; Va
 Root: HKCU; Subkey: "Software\Classes\Storynator.Package\DefaultIcon"; ValueType: string; ValueData: """{app}\Storynator.exe"",0"
 Root: HKCU; Subkey: "Software\Classes\Storynator.Package\shell\open\command"; ValueType: string; ValueData: """{app}\Storynator.exe"" --import-pack ""%1"""
 [Run]
-Filename: "{app}\Storynator.exe"; Description: "Storynator"; Flags: nowait skipifsilent
+Filename: "{app}\Storynator.exe"; Description: "Storynator"; Flags: nowait skipifsilent; Check: not IsStorynatorUpdate
+
+Filename: "{app}\Storynator.exe"; Parameters: """{param:STORYNATORPROJECT|}"""; Flags: nowait runasoriginaluser; Check: IsStorynatorUpdate
+[Code]
+function IsStorynatorUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:STORYNATORUPDATE|0}') = '1';
+end;

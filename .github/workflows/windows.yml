@@ -56,7 +56,7 @@ jobs:
         run: |
           $compiler = "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe"
           if (-not (Test-Path $compiler)) { choco install innosetup -y --no-progress }
-          & $compiler installer/Storynator.iss
+          & $compiler "/DStorynatorVersion=0.8.$env:GITHUB_RUN_NUMBER" installer/Storynator.iss
           if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
           Compress-Archive -Path dist/Storynator -DestinationPath dist/Storynator-Portable.zip
       - name: Test Windows installation and file associations
@@ -76,15 +76,36 @@ jobs:
           if ($preset -notlike '*--import-preset*') { throw 'Preset association incorrect' }
           $process = Start-Process "$install/Storynator.exe" -ArgumentList '--smoke-test' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Installed application test failed' }
+          $project = Join-Path $install 'UserProject.storynator'
+          Copy-Item Beispiel.storynator $project
+          $before = (Get-FileHash $project -Algorithm SHA256).Hash
+          $process = Start-Process dist/Storynator-Setup.exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/STORYNATORUPDATE=1', "/STORYNATORPROJECT=`"$project`"", "/DIR=`"$install`"") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'In-place upgrade failed' }
+          $env:PYTHONIOENCODING = 'utf-8'
+          $expectedName = (python -c "import sys; from core import load_project; print(load_project(sys.argv[1])['name'])" $project).Trim()
+          $restarted = $null
+          for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            $restarted = Get-Process -Name Storynator -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq "$install/Storynator.exe".Replace('/','\') } | Where-Object { $_.Refresh(); $_.MainWindowTitle.StartsWith($expectedName) } | Select-Object -First 1
+            if ($restarted) { break }
+            Start-Sleep -Milliseconds 500
+          }
+          if (-not $restarted -or -not $restarted.MainWindowTitle.StartsWith($expectedName)) { throw 'Update did not reopen the project' }
+          if (-not $restarted.CloseMainWindow()) { throw 'Updated application has no window' }
+          if (-not $restarted.WaitForExit(30000)) { throw 'Updated application failed to close' }
+          if ((Get-FileHash $project -Algorithm SHA256).Hash -ne $before) { throw 'Upgrade changed the user project' }
+          $process = Start-Process "$install/Storynator.exe" -ArgumentList '--smoke-test' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Upgraded executable failed' }
       - name: Publish Windows downloads
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
+          python scripts/make_update_manifest.py
+          if ($LASTEXITCODE -ne 0) { throw 'Update metadata failed' }
           $tag = "v0.8.$env:GITHUB_RUN_NUMBER"
           Get-FileHash dist/Storynator-Setup.exe,dist/Storynator-Portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content dist/SHA256SUMS.txt
-          $notes = "Storynator 0.8: M19 Featureerweiterung. Vordefinierte und importierbare Projektstarter. Markdown-Quelltext mit Live-Vorschau fuer Manuskript und Richtext-Felder, stabilen Verweisen und eingebetteten Bildern. Lokaler DOCX-Import mit Vorschau, Kapitelaufteilung, Formatierung, Listen, Tabellen und Bildern; Einschraenkungen werden angezeigt. Eigene Sprachwoerterbuecher mit Wortformen, Aussprache, Uebersetzung, CSV/JSON-Austausch und Offline-Rechtschreibung. Zoombare Weltkarten mit verschiebbaren Markierungen, Hover-Vorschau und verknuepften Eintraegen. Speicherung aller Kartenbilder und Woerterbuecher im Projekt. Windows-Tests, Skalierung, EXE und Installation geprueft. Setup ausfuehren, kein Python erforderlich. Weiterhin unsigniert."
-          gh release create $tag dist/Storynator-Setup.exe dist/Storynator-Portable.zip dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
+          $notes = "Storynator mit integriertem Updater: oben auf das Updatesymbol klicken, GitHub-Version pruefen und Update installieren. Gepruefter Download, Projektsicherung, Aktualisierung der bestehenden Installation ohne Deinstallation und Neustart. Neuinstallieren ueber die vorhandene Version bringt das Updatesymbol auch in aeltere Versionen. Weiterhin enthalten: Storynator 0.8: M19 Featureerweiterung. Vordefinierte und importierbare Projektstarter. Markdown-Quelltext mit Live-Vorschau fuer Manuskript und Richtext-Felder, stabilen Verweisen und eingebetteten Bildern. Lokaler DOCX-Import mit Vorschau, Kapitelaufteilung, Formatierung, Listen, Tabellen und Bildern; Einschraenkungen werden angezeigt. Eigene Sprachwoerterbuecher mit Wortformen, Aussprache, Uebersetzung, CSV/JSON-Austausch und Offline-Rechtschreibung. Zoombare Weltkarten mit verschiebbaren Markierungen, Hover-Vorschau und verknuepften Eintraegen. Speicherung aller Kartenbilder und Woerterbuecher im Projekt. Windows-Tests, Skalierung, EXE und Installation geprueft. Setup ausfuehren, kein Python erforderlich. Weiterhin unsigniert."
+          gh release create $tag dist/Storynator-Setup.exe dist/Storynator-Portable.zip dist/SHA256SUMS.txt dist/update.json --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -93,4 +114,5 @@ jobs:
             dist/Storynator-Setup.exe
             dist/Storynator-Portable.zip
             dist/SHA256SUMS.txt
+            dist/update.json
           retention-days: 14

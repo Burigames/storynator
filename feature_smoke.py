@@ -18,3 +18,9 @@ def run_m19(host):
         path=Path(folder)/'M19.docx'
         with zipfile.ZipFile(path,'w') as archive:archive.writestr('word/document.xml','<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>M19 DOCX smoke</w:t></w:r></w:p></w:body></w:document>')
         assert 'M19 DOCX smoke' in read_docx(path)['documents'][0]['html'];project=Path(folder)/'M19.storynator';save_project(host.p,project);assert load_project(project)==host.p
+
+    from update_ui import UpdateDialog
+    from versioning import current_version,version_tuple
+    version_tuple(current_version());updater=UpdateDialog(host,auto_check=False);assert updater.download.reply is None and host.update_button.accessibleName();updater.reject();updater.deleteLater()
+    import os,sys
+    if getattr(sys,'frozen',False) and os.environ.get('GITHUB_RUN_NUMBER'):assert current_version()=='0.8.'+os.environ['GITHUB_RUN_NUMBER']

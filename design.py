@@ -10,6 +10,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QApplication, QLabel, QToolButton, QPushButton, QFrame, QGraphicsDropShadowEffect
 
 PATHS={
+ 'update':'M20 8a8 8 0 0 0-14-3L3 8 M3 3v5h5 M4 16a8 8 0 0 0 14 3l3-3 M16 16h5v5',
  'book':'M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H4z M22 4h-6a3 3 0 0 0-3 3v14a4 4 0 0 1 4-3h5z',
  'world':'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M3 12h18 M12 3c5 5 5 13 0 18 M12 3c-5 5-5 13 0 18',
  'timeline':'M4 4v16h17 M8 8h7 M11 12h9 M7 16h5',

@@ -197,6 +197,8 @@ class Main(QMainWindow):
         header=QFrame();header.setObjectName('header');hl=QHBoxLayout(header);hl.setContentsMargins(28,14,26,14);hl.setSpacing(14)
         self.breadcrumb=label('DEIN SCHREIBATELIER','eyebrow');self.breadcrumb.setMinimumWidth(0);self.breadcrumb.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Preferred);hl.addWidget(self.breadcrumb);hl.addStretch()
         self.global_search=QLineEdit();self.global_search.setObjectName('globalSearch');self.global_search.setPlaceholderText(tr('Projekt durchsuchen …'));self.global_search.addAction(icon('search'),QLineEdit.LeadingPosition);self.global_search.setMinimumWidth(140);self.global_search.setMaximumWidth(280);self.global_search.returnPressed.connect(lambda:self.search(self.global_search.text()));hl.addWidget(self.global_search)
+        from update_ui import show_updates
+        self.update_button=tool('update','Updates prüfen',lambda:show_updates(self));self.update_button.setObjectName('updateButton');hl.addWidget(self.update_button)
         hl.addWidget(tool('print','Drucken und als PDF exportieren · Strg+P',self.printing));self.save_button=primary('Speichern',lambda:self.save(),'save');hl.addWidget(self.save_button);wl.addWidget(header)
         self.formatbar=QFrame();self.formatbar.setObjectName('formatbar');self.format_area=QScrollArea();self.format_area.setFrameShape(QFrame.NoFrame);self.format_area.setWidgetResizable(True);self.format_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff);self.format_area.setMinimumWidth(0);self.format_area.setFixedHeight(76);self.format_area.setWidget(self.formatbar);wl.addWidget(self.format_area);wl.addWidget(self.tabs,1)
         split=QSplitter();split.setChildrenCollapsible(False);side_scroll=QScrollArea();side_scroll.setObjectName('sidebarScroll');side_scroll.setWidgetResizable(True);side_scroll.setWidget(sidebar);side_scroll.setMinimumWidth(235);side_scroll.setMaximumWidth(330);split.addWidget(side_scroll);split.addWidget(workspace);split.setSizes([258,1242]);self.setCentralWidget(split)
@@ -393,7 +395,8 @@ class Main(QMainWindow):
         a=m.addAction(tr('Fokusmodus'));a.setShortcut('F11');a.triggered.connect(self.toggle_focus)
         from community_ui import CommunityDialog
         m=self.menuBar().addMenu('Addon');m.addAction(tr('Addons verwalten'),lambda:AddonManager(self).exec());m.addAction(tr('Kategorien als Preset exportieren'),lambda:export_preset(self));m.addAction(tr('Community · Bibliothek & Austausch'),lambda:CommunityDialog(self).exec())
-        m=self.menuBar().addMenu(tr('Hilfe'));m.addAction(tr('Lizenzen & Quellen'),lambda:license_dialog(self))
+        from update_ui import show_updates
+        m=self.menuBar().addMenu(tr('Hilfe'));m.addAction(tr('Lizenzen & Quellen'),lambda:license_dialog(self));m.addAction(tr('Updates prüfen'),lambda:show_updates(self))
     def select_navigation(self,id):
         iterator=QTreeWidgetItemIterator(self.nav)
         while iterator.value():
@@ -607,7 +610,7 @@ class Main(QMainWindow):
             try:save_project(self.p,self.recovery);self.backups.create(self.p,self.path,'Automatisch')
             except Exception as e:self.statusBar().showMessage(tr('Wiederherstellung fehlgeschlagen: ')+str(e),15000);logging.exception('Automatic backup failed')
     def closeEvent(self,e):
-        if self.guard():
+        if getattr(self,'_update_approved',False) or self.guard():
             self._closing=True;self.timer.stop();self.views_timer.stop();self.status_timer.stop();self.backup_pool.waitForDone();self.recovery.unlink(missing_ok=True)
             if self._project_lock:self._project_lock.unlock();self._project_lock=None
             for editor in self.findChildren(Rich):editor.store_timer.stop();editor.mark_timer.stop();editor.note_cursors.clear()
