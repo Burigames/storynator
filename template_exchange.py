@@ -58,7 +58,7 @@ def update_categories(project,spec,choices=None):
     from community import remap,digest
     resolved=choices is not None;choices=choices or {};receipt=next((r for r in reversed(project.get('community_imports',[])) if r['package']==spec['metadata']['id'] and r.get('kind')=='categories' and 'mapping' in r),None)
     if receipt is None:raise ValueError('Für diese Vorlage fehlt die frühere Importzuordnung. Bitte als neue Kopie importieren.')
-    if receipt['identity_version']!=spec['version']:raise ValueError('Diese Vorlagenversion verwendet andere Feldkennungen. Bitte als neue Kopie importieren.')
+    if receipt['identity_version']<2 or spec['version']<2 or receipt['identity_version']!=spec['version']:raise ValueError('Diese Vorlagenversion verwendet andere Feldkennungen. Bitte als neue Kopie importieren.')
     q=copy.deepcopy(project);p=materialize(spec);mapping=copy.deepcopy(receipt['mapping']);lookup={c['id']:c for c in q['categories']};new_sources={c['id'] for c in p['categories']};conflicts=[];baseline=copy.deepcopy(receipt['baseline'])
     # A type change gets a new target field; the old definition and values are archived.
     for cat in p['categories']:

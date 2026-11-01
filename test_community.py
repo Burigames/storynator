@@ -169,6 +169,7 @@ def test_template_v2_rejects_duplicate_ids_and_supports_legacy(project):
     with pytest.raises(ValueError):c.validate(bad)
     legacy=copy.deepcopy(s);legacy['version']=1;legacy['payload'].pop('identities');q,_=c.plan_import(new_project(),legacy);assert q['categories']
     with pytest.raises(ValueError,match='andere Feldkennungen'):c.plan_update(q,s)
+    with pytest.raises(ValueError,match='andere Feldkennungen'):c.plan_update(q,legacy)
 
 def test_builtin_challenges_are_stable_across_refreshes():
     assert c.builtin_packages()==c.builtin_packages()
