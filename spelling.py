@@ -28,29 +28,46 @@ def misspellings(text,language,ignored=(),cancel=None):
 class Signals(QObject):
     done=Signal(object,str)
 class CheckTask(QRunnable):
-    def __init__(self,text,language,ignored):super().__init__();self.text=text;self.language=language;self.ignored=ignored;self.signals=Signals();self.cancel=threading.Event()
+    def __init__(self,text,language,ignored,custom=None):super().__init__();self.text=text;self.language=language;self.ignored=ignored;self.custom=custom;self.signals=Signals();self.cancel=threading.Event()
     def run(self):
-        try:self.signals.done.emit(misspellings(self.text,self.language,self.ignored,self.cancel),'')
+        try:
+            if self.custom is not None:
+                from conlangs import unknown_words
+                result=unknown_words(self.text,self.custom,self.ignored,self.cancel)
+            else:result=misspellings(self.text,self.language,self.ignored,self.cancel)
+            self.signals.done.emit(result,'')
         except Exception as error:self.signals.done.emit([],str(error))
 class SpellDialog(QDialog):
     def __init__(self,host):
-        super().__init__(host);self.host=host;self.doc=current_doc(host);self.setWindowTitle(tr('Offline-Rechtschreibung'));self.resize(650,520);layout=QVBoxLayout(self);self.language=QComboBox();self.language.addItem('Deutsch','de_DE');self.language.addItem('English','en_US');self.language.setCurrentIndex(max(0,self.language.findData(host.p.get('spelling_language','de_DE'))));layout.addWidget(self.language);self.list=RoomyList();layout.addWidget(self.list,1);self.status=QLabel();self.status.setWordWrap(True);layout.addWidget(self.status);row=QHBoxLayout();self.check_button=QPushButton(tr('Kapitel prüfen'));self.check_button.clicked.connect(self.check);row.addWidget(self.check_button);replace=QPushButton(tr('Alle Vorkommen ersetzen'));replace.clicked.connect(self.replace);row.addWidget(replace);ignore=QPushButton(tr('Zum Projektwörterbuch'));ignore.clicked.connect(self.ignore);row.addWidget(ignore);layout.addLayout(row);manage=QPushButton(tr('Projektwörterbuch verwalten'));manage.clicked.connect(self.manage_dictionary);layout.addWidget(manage);self.pool=QThreadPool(self);self.pool.setMaxThreadCount(1);self.check()
+        super().__init__(host);self.host=host;self.doc=current_doc(host);self.setWindowTitle(tr('Offline-Rechtschreibung'));self.resize(650,520);layout=QVBoxLayout(self);self.language=QComboBox();self.language.addItem('Deutsch','de_DE');self.language.addItem('English','en_US');[self.language.addItem(l['name'],'conlang:'+l['id']) for l in host.p.get('lexicons',[])];self.language.setCurrentIndex(max(0,self.language.findData(host.p.get('spelling_language','de_DE'))));layout.addWidget(self.language);self.list=RoomyList();layout.addWidget(self.list,1);self.status=QLabel();self.status.setWordWrap(True);layout.addWidget(self.status);row=QHBoxLayout();self.check_button=QPushButton(tr('Kapitel prüfen'));self.check_button.clicked.connect(self.check);row.addWidget(self.check_button);replace=QPushButton(tr('Alle Vorkommen ersetzen'));replace.clicked.connect(self.replace);row.addWidget(replace);ignore=QPushButton(tr('Zum Projektwörterbuch'));ignore.clicked.connect(self.ignore);row.addWidget(ignore);layout.addLayout(row);self.manage_button=QPushButton(tr('Projektwörterbuch verwalten'));self.manage_button.clicked.connect(self.manage_dictionary);layout.addWidget(self.manage_button);self.pool=QThreadPool(self);self.pool.setMaxThreadCount(1);self.check()
     def editor(self):
         if not self.doc:return None
         self.host.open_object(self.doc['id']);return self.host.editor()
     def check(self):
         editor=self.editor()
         if not editor:return
-        self.host.flush_editors();self.text=editor.toPlainText();self.list.clear();self.status.setText(tr('Wörterbuch wird lokal geladen und Text geprüft …'));self.check_button.setEnabled(False);ignored=list(self.host.p.get('personal_dictionary',[]))+[word for o in self.host.p['entries'] for word in o['name'].split()];self.job=CheckTask(self.text,self.language.currentData(),ignored);self.job.signals.done.connect(self.on_checked);self.pool.start(self.job)
+        self.host.flush_editors();self.text=editor.toPlainText();self.list.clear();self.status.setText(tr('Wörterbuch wird lokal geladen und Text geprüft …'));self.check_button.setEnabled(False);self.language.setEnabled(False);self.manage_button.setEnabled(False);ignored=list(self.host.p.get('personal_dictionary',[]))+[word for o in self.host.p['entries'] for word in o['name'].split()];custom=next((l for l in self.host.p.get('lexicons',[]) if 'conlang:'+l['id']==self.language.currentData()),None);import copy;self.job=CheckTask(self.text,self.language.currentData(),ignored,copy.deepcopy(custom));self.job.signals.done.connect(self.on_checked);self.pool.start(self.job)
+        if self.host.p.get('spelling_language')!=self.language.currentData():self.host.p['spelling_language']=self.language.currentData();self.host.changed()
     def on_checked(self,items,error):
-        self.check_button.setEnabled(True);self.status.setText(error or str(len(items))+' '+tr('mögliche Schreibfehler · Eigennamen können ergänzt werden.'))
+        self.check_button.setEnabled(True);self.language.setEnabled(True);self.manage_button.setEnabled(True);self.status.setText(error or str(len(items))+' '+tr('mögliche Schreibfehler · Eigennamen können ergänzt werden.'))
         for word,start,end in items:
             item=QListWidgetItem(word);item.setData(Qt.UserRole,(word,start,end));self.list.addItem(item)
         if self.list.count():self.list.setCurrentRow(0)
     def ignore(self):
         item=self.list.currentItem()
-        if item:self.host.p.setdefault('personal_dictionary',[]).append(item.data(Qt.UserRole)[0]);self.host.changed();self.list.takeItem(self.list.row(item))
+        if item:
+            language=next((l for l in self.host.p.get('lexicons',[]) if 'conlang:'+l['id']==self.language.currentData()),None)
+            if language is not None:
+                from core import uid
+                language['words'].append(dict(id=uid(),word=item.data(Qt.UserRole)[0],forms=[]))
+            else:self.host.p.setdefault('personal_dictionary',[]).append(item.data(Qt.UserRole)[0])
+            self.host.changed();self.list.takeItem(self.list.row(item))
     def manage_dictionary(self):
+        if self.language.currentData().startswith('conlang:'):
+            from conlang_ui import LexiconDialog
+            selected=self.language.currentData();LexiconDialog(self.host,selected[8:]).exec();self.language.clear();self.language.addItem('Deutsch','de_DE');self.language.addItem('English','en_US')
+            for l in self.host.p.get('lexicons',[]):self.language.addItem(l['name'],'conlang:'+l['id'])
+            self.language.setCurrentIndex(max(0,self.language.findData(selected)));self.check();return
         dialog=QDialog(self);dialog.setWindowTitle(tr('Projektwörterbuch'));layout=QVBoxLayout(dialog);items=RoomyList();items.addItems(sorted(set(self.host.p.get('personal_dictionary',[]))));layout.addWidget(items);remove=QPushButton(tr('Ausgewähltes Wort entfernen'))
         def erase():
             if items.currentItem():word=items.currentItem().text();self.host.p['personal_dictionary']=[x for x in self.host.p.get('personal_dictionary',[]) if x!=word];items.takeItem(items.currentRow());self.host.changed()

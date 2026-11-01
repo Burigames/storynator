@@ -56,7 +56,7 @@ def manuscript_document(project,docs,titles=True,pdf=False,printer=None,cover_ki
     from PySide6.QtCore import Qt,QUrl
     from PySide6.QtGui import QFont,QImage,QTextCursor,QTextImageFormat,QTextBlockFormat,QTextCharFormat,QTextFormat,QColor
     selected_ids={d['id'] for d in docs};docs=[d for d in authoring.ordered_documents(project) if d['id'] in selected_ids]
-    doc=QTextDocument();doc.setDefaultFont(QFont('Georgia',14));doc.setMetaInformation(QTextDocument.DocumentTitle,docs[0]['name'] if len(docs)==1 else project['name'])
+    doc=QTextDocument();doc.setDefaultFont(QFont('Georgia',14));doc.setDefaultStyleSheet('a { color: #000000; text-decoration: none; }');doc.setMetaInformation(QTextDocument.DocumentTitle,docs[0]['name'] if len(docs)==1 else project['name'])
     keys={key for obj in docs for key in re.findall(r'asset:([^\s\"<>]+)',obj['html'])}
     if pdf:keys.update(project.get('covers',{}).values())
     for key in keys:

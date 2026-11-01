@@ -112,6 +112,10 @@ def project_report(p,check_image=None):
             if relation.get('start'):cal.span(relation['start'],relation.get('end',''))
             elif relation.get('end'):raise ValueError('Anfang fehlt')
         except (ValueError,KeyError,IndexError):add('Ungültiges Datum','Beziehung',relation.get('start',''))
+    for map in p.get('maps',[]):
+        if map['asset'] not in p['assets']:add('Fehlendes Bild',map['name'],map['asset'])
+        for pin in map['pins']:
+            if pin['target'] and pin['target'] not in lookup:add('Fehlender Verweis',map['name']+' · '+pin['name'],pin['target'])
     used=used_assets(p)
     for key in used-p['assets'].keys():add('Fehlendes Bild','Projekt',key)
     for key,value in p['assets'].items():

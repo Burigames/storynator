@@ -33,6 +33,9 @@ def references(p,id):
 
     for relation in p.get('relationships',[]):
         if id in [relation['source'],relation['target']]:result.append('Beziehung: '+(resolve(p,relation['source']) or {}).get('name','?')+' → '+(resolve(p,relation['target']) or {}).get('name','?'))
+    for map in p.get('maps',[]):
+        for pin in map['pins']:
+            if pin.get('target')==id:result.append('Karte: '+map['name']+' · '+pin['name'])
     return result
 
 class Calendar:

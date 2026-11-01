@@ -114,3 +114,11 @@ Manuelle Grenzen bleiben: keine reale Hardware-/Screenreader-/physische Druckera
 ## Version 0.7.1 – Vorlagenmigration und stabile Starter
 
 Zusätzliche Regressionen prüfen Feldumbenennung und Sortierung ohne Wertverlust, Archivierung entfernter Felder, neue Zielkennung bei Typwechsel, lokale Konfliktentscheidungen, selektiven Import mit stabilen Identitäten, v1-Kompatibilität/v2-Validierung, gleichbleibende eingebaute Challenges, Starter-Reexport ohne Duplikate, Erhalt alter Werte beim Weltpaket-Update, wiederholte Updates ohne doppelte Archive, konsistente Auswahlfilter bei abhängigen Konflikten, Kapitelstände/abgelöste Kommentare beim gewählten Überschreiben und Archiv-/Zuordnungs-Roundtrip. Die frühere Einschränkung zu reinen Kategorieupdates ist damit für neue Pakete aufgehoben.
+
+## Version 0.8 – M19 Featureerweiterung
+
+Neue Integrationstests prüfen deterministische Projektstarter und deren unabhängige Kennungen, Starter-Dateiimport und Projekt-Roundtrip, Markdown in Manuskript und Welt-Feldern, Rückgängig und vorherige Sicherungen, Schriftgröße/Schriftart, interne Verweise, eingebettete Bilder, lokale Quelltext-Platzhalter, sauberen PDF-Export und das Verwerfen noch nicht übernommener Bilder. DOCX-Fälle decken Kapitelaufteilung, Schriftformatierung, Ausrichtung, Listenfortsetzung/-starts, Tabellen, Bilder, externe Verknüpfungen, XML-/Archivabwehr sowie die tatsächliche Übernahme nach Vorschau ab.
+
+Weitere Tests prüfen erfundene Sprachen, Wortformen, Groß-/Kleinschreibung, JSON-/CSV-Roundtrip, CSV-Abbruch ohne Mutation, eigene Sprache in der Rechtschreibprüfung und die Wörterbuch-Oberfläche. Kartenfälle prüfen Projekt-/Bild-Roundtrip, Referenzwarnungen, Ressourcenintegrität, Zoom-/Ansichtserhalt, Umbenennungen, Eintragöffnung und tatsächliches Verschieben eines Punktes über Mausereignisse mit gespeicherten relativen Koordinaten.
+
+`feature_smoke.run_m19` wird zusätzlich im Quellstarttest, in der gepackten EXE und nach echter Windows-Installation ausgeführt: Starter-Auswahl, Markdown-Dialog, DOCX-Leser, Wörterbuchansicht, Kartenansicht und Projekt-Roundtrip. Es werden keine Netzwerkzugriffe benötigt. Die bisherigen manuellen Hardware-/Screenreader-/physischen Druckertests und Codesignatur bleiben offen.

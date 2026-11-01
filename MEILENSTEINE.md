@@ -1,4 +1,4 @@
-# Storynator 0.7 – M12 bis M18 und Cover
+# Storynator 0.8 – M12 bis M19 und Cover
 
 ## M12 – Stabile Alltagsversion
 
@@ -220,3 +220,64 @@ Neue Integrationstests decken Paketrundlauf, Ausschlüsse, Abhängigkeiten, ID-N
 Das Austauschformat v2 ist unabhängig vom Projektformat v3. Für vor 0.7.1 importierte Starter oder Kategoriepakete ohne passende Zuordnung wird keine heuristische Zuordnung anhand ähnlicher Namen vorgenommen.
 
 - [x] Öffentliche Weltpakete schließen archivierte und unbekannte Feldwerte aus; lokale Archive bleiben unverändert.
+
+## M19 – Featureerweiterung (Version 0.8)
+
+### 19.1 Projektstarter
+- [x] „Neues Projekt“ mit leerem Projekt und fünf vordefinierten Startern: Roman, Fantasy-Welt, Kriminalroman, Science-Fiction und Kurzgeschichte.
+- [x] Leere Teile/Kapitel/Szenen und passende Kategorievorlagen, ohne vorgefertigte Welt-Einträge.
+- [x] Starter und Challenges als `.storynator-pack` importieren und direkt als neues, unabhängiges Projekt anlegen.
+- [x] Bereits lokal importierte Starter in der Auswahl; vollständig offline nutzbar.
+- [x] Eigene Starter über den vorhandenen Community-Export erstellen; Kalender, leere Struktur und Vorlagen erhalten.
+- [x] Neue Projekt-/Objektkennungen und korrekt zugeordnete interne Vorlageverweise; keine doppelte Standard-Kapitelanlage.
+
+### 19.2 Markdown
+- [x] Markdown-Quelltextmodus mit Live-Vorschau für Haupteditor, Beschreibungen und formatierbare Welt-Felder.
+- [x] Über „MD“, „Manuskript → Markdown bearbeiten“, Strg+Alt+M und das Kontextmenü erreichbar.
+- [x] Überschriften, Hervorhebungen, Listen, Tabellen und Code nach Qt/GitHub-Markdown.
+- [x] `@` und Auswahlbutton fügen stabile Projektverweise ein; interne Kennungen bleiben hinter lokalen Quelltext-Platzhaltern verborgen.
+- [x] Bilder lokal importieren, in der Vorschau anzeigen und erst bei Übernahme in Projektressourcen aufnehmen.
+- [x] Nur tatsächlich verwendete neue Bilder übernehmen; Abbruch lässt Projekt und Ressourcen unverändert.
+- [x] Übernahme in einem rückgängig machbaren Schritt; vorher Projektsicherung und bei Kapiteln zusätzlicher Kapitelstand.
+- [x] Unverändert geschlossener Markdown-Dialog schreibt den Richtext nicht neu.
+- [x] Markdown-Verweise behalten ihre Ziele nach Speichern/Öffnen und erscheinen im PDF wie normaler Text.
+
+Markdown kann nicht alle Richtext-Eigenschaften ausdrücken; eine Übernahme kann beispielsweise individuelle Schriftgestaltung vereinfachen. Die vorherige Fassung bleibt über Rückgängig/Sicherungen beziehungsweise Kapitelstände erreichbar. Vorhandene Textkommentare werden mit ihrem Text und Zitat als abgelöst erhalten, statt nach dem vollständigen Textaustausch eine exakte Position vorzutäuschen. Lokale Markdown-Verweisplatzhalter gelten nur innerhalb der aktuellen Bearbeitung; beim Übertragen von Quelltext in einen anderen Dialog Verweise erneut mit `@` auswählen. Fremde Platzhalter werden abgewiesen. Einzeilige Klartext-/Namensfelder bleiben Klartext.
+
+### 19.3 DOCX-Import
+- [x] Lokaler, begrenzter DOCX-Import ohne Word-Installation und ohne Netzwerkzugriff.
+- [x] Kapitelvorschau; optional an Überschrift 1 in neue Kapitel aufteilen.
+- [x] Schriftart/-größe, fett/kursiv/unterstrichen, Textfarbe, Ausrichtung, Überschriften, einfache Listen, Tabellen und eingebettete Rasterbilder.
+- [x] Grundlegende Nummerierungsstarts und Listenfortsetzung; Bilder werden dedupliziert und eingebettet.
+- [x] Externe Bilder werden nicht geladen; externe Hyperlinks werden als sichtbarer Text übernommen.
+- [x] Keine Übernahme bestehender Kapitel: Import hängt neue Dokumente nach Bestätigung an und sichert vorher das Projekt.
+- [x] Größen-, Struktur- und XML-Prüfung; keine Dateiextraktion, Makroausführung oder externen XML-Entitäten.
+- [x] Hinweise zu ausgelassenen oder vereinfachten Inhalten vor der Übernahme.
+
+Der Import ist kein seitengetreuer Word-Konverter. Fuß-/Endnoten, Kopf-/Fußzeilen, Word-Kommentare, Word-Lesezeichen, OLE-Objekte und Diagramme ohne Rastervorschau werden nicht übernommen. Änderungsverfolgung wird als endgültiger Text gelesen. Komplexe Listen, Tabellen-/Seitenlayouts und manuelle Seitenumbrüche können abweichen. Grenzen: 64 MB komprimiert, 128 MB entpackt; zusätzliche XML-Strukturgrenzen.
+
+### 19.4 Erfundene Sprachen und Wörterbücher
+- [x] Mehrere Projektsprachen mit Name, Alphabet/Schriftzeichen, Sprachnotizen und wählbarer Groß-/Kleinschreibung.
+- [x] Eigene Wörter mit Übersetzung, Aussprache, Wortart, Definition, Beispielen und weiteren Wortformen.
+- [x] Anlegen, bearbeiten, suchen und löschen; Sicherung vor dem Entfernen einer Sprache und vor CSV-Zusammenführung.
+- [x] Wörterbücher als `.storynator-lexicon`/JSON exportieren und mit frischen Kennungen importieren.
+- [x] UTF-8-CSV importieren/exportieren; beim Zusammenführen vorhandene Wörter unverändert lassen.
+- [x] Eigene Sprachen stehen im Kapitel-Rechtschreibdialog zur Auswahl; Wörter und hinterlegte Formen werden lokal erkannt.
+- [x] Unbekannte Wörter direkt ins ausgewählte Sprachwörterbuch aufnehmen.
+- [x] Vollständige Speicherung der Wörterbücher in der portablen Projektdatei.
+
+Die Sprachprüfung vergleicht Wörter mit dem Lexikon und den manuell definierten Wortformen. Alphabet und Sprachnotizen sind beschreibende Metadaten. CSV-Spalten: `word`, `translation`, `pronunciation`, `part_of_speech`, `definition`, `examples`, `forms`; mehrere Formen werden mit `|` getrennt. Wörterbuch-/CSV-Import maximal 16 MB.
+
+### 19.5 Interaktive Weltkarte
+- [x] Mehrere benannte Karten mit eingebetteten PNG-/JPEG-/WebP-/BMP-Bildern.
+- [x] Zoomen per Mausrad, Verschieben per Ziehen und Einpassen.
+- [x] Markierungen hinzufügen, auswählen, suchen, bearbeiten, entfernen und im Bearbeitungsmodus direkt verschieben.
+- [x] Relative Bildkoordinaten speichern; Markierungen bleiben nach erneutem Öffnen am richtigen Ort.
+- [x] Stabile Verknüpfung zu Welt-/Timeline-/Manuskripteinträgen über die vorhandene Auswahl.
+- [x] Einträge per Doppelklick oder Button öffnen; Kartenansicht bleibt als Tab erhalten.
+- [x] Verknüpfte Namen aktualisieren sich bei Umbenennung; Hover zeigt die vorhandene Eintragsvorschau.
+- [x] Löschwarnungen berücksichtigen Kartenverweise; fehlende Ziele bleiben erkennbar und werden nicht umgebogen.
+- [x] Kartenbilder vor Ressourcenbereinigung schützen; fehlende Bilder/Verweise in der Projektprüfung melden.
+- [x] Scrollbare Werkzeugbereiche und Darstellung im vorhandenen Theme.
+
+Das Projektformat bleibt v3. Karten, Bilder, Markierungen und Wörterbücher gehören vollständig zur `.storynator`-Datei; die optionalen Sicherungen bleiben wie bisher lokal separat. Starter enthalten leere Manuskriptstruktur, Kategorien und Kalender. Für die Weitergabe einer vollständig ausgearbeiteten Welt einschließlich Karten und Sprachlexika dient die vollständige Projektdatei.

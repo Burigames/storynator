@@ -58,7 +58,7 @@ class Picker(QDialog):
 class Rich(QTextEdit):
     def __init__(self,w,obj,key='html'):
         super().__init__(); self.w=w; self.obj=obj; self.key=key; self.setAcceptRichText(True); self.setFont(QFont('Georgia',14)); self.document().setDocumentMargin(35)
-        self.setAccessibleName(obj.get('name',tr('Formatierter Text')));self.setTabChangesFocus(True);self.setMinimumHeight(190);self.document().setDefaultFont(QFont('Georgia',14));self.load_assets();self.setHtml(render(w.p,obj.get(key,'')));self.setMouseTracking(True)
+        self.setAccessibleName(obj.get('name',tr('Formatierter Text')));self.setTabChangesFocus(True);self.setMinimumHeight(190);self.document().setDefaultFont(QFont('Georgia',14));self.document().setDefaultStyleSheet('a { color: #000000; text-decoration: none; }');self.load_assets();self.setHtml(render(w.p,obj.get(key,'')));self.setMouseTracking(True)
         self.cursorPositionChanged.connect(lambda:w.sync_format(self));self.currentCharFormatChanged.connect(lambda _:w.sync_format(self))
         self.store_timer=QTimer(self);self.store_timer.setSingleShot(True);self.store_timer.timeout.connect(self.flush);self.reload_annotations();self.textChanged.connect(self.store);self.mark_timer=QTimer(self);self.mark_timer.setSingleShot(True);self.mark_timer.timeout.connect(self.update_marks);self.textChanged.connect(lambda:self.mark_timer.start(60));self.update_marks()
     def reload_annotations(self):self.note_cursors=authoring.annotation_cursors(self.obj,self.document());self.update_marks()
@@ -121,6 +121,11 @@ class Rich(QTextEdit):
             href=self.anchorAt(event.pos())
             if href.startswith('story:'):QToolTip.showText(event.globalPos(),self.w.preview_html(href[6:]),self);return True
         return super().viewportEvent(event)
+    def contextMenuEvent(self,event):
+        menu=self.createStandardContextMenu();menu.addSeparator();menu.addAction(tr('Markdown bearbeiten'),self.markdown);menu.exec(event.globalPos())
+    def markdown(self):
+        from markdown_ui import MarkdownDialog
+        dialog=MarkdownDialog(self);dialog.exec();dialog.deleteLater()
     def keyPressEvent(self,e):
         if e.text()=='@': self.link(); return
         super().keyPressEvent(e)
@@ -373,10 +378,15 @@ class Main(QMainWindow):
         for name,fn,key in [('Neu',self.new,'Ctrl+N'),('Öffnen',self.open_file,'Ctrl+O'),('Speichern',self.save,'Ctrl+S'),('Speichern unter',lambda:self.save(True),'Ctrl+Shift+S'),('Startseite',self.home,''),('Druckvorschau / PDF',self.printing,'Ctrl+P')]:
             a=m.addAction(tr(name)); a.triggered.connect(fn); a.setShortcut(key)
         for text,callback in [('Projekt & Buchcover',lambda:CoversDialog(self).exec()),('Sicherungen & Wiederherstellung',lambda:BackupDialog(self).exec()),('Sicherungseinstellungen',lambda:backup_preferences(self)),('Projekt prüfen & bereinigen',lambda:IntegrityDialog(self).exec())]:m.addAction(tr(text),callback)
+        from docx_ui import import_docx
+        m.addAction(tr('DOCX importieren'),lambda:import_docx(self))
         m=self.menuBar().addMenu(tr('Manuskript'))
         for text,callback in [('Teil anlegen',lambda:self.add_manuscript_item('part')),('Szene anlegen',lambda:self.add_manuscript_item('scene')),('Struktur & Status',lambda:StructureDialog(self).exec()),('Suchen & Ersetzen',lambda:ReplaceDialog(self).exec()),('Schreibziele & Statistik',lambda:GoalsDialog(self).exec()),('Kommentare & Lesezeichen',lambda:NotesDialog(self).exec()),('Kapitelstände',lambda:RevisionsDialog(self).exec()),('Offline-Rechtschreibung',lambda:SpellDialog(self).exec())]:m.addAction(tr(text),callback)
+        action=m.addAction(tr('Markdown bearbeiten'),lambda:self.editor().markdown() if self.editor() else None);action.setShortcut('Ctrl+Alt+M')
         m=self.menuBar().addMenu(tr('Welt'))
         m.addAction(tr('Beziehungen'),lambda:RelationshipDialog(self,(self.current() or {}).get('id')).exec());m.addAction(tr('Beziehungsgraph'),lambda:GraphDialog(self,(self.current() or {}).get('id')).exec())
+        from conlang_ui import LexiconDialog
+        m.addAction(tr('Erfundene Sprachen & Wörterbücher'),lambda:LexiconDialog(self).exec());m.addAction(tr('Interaktive Weltkarte'),self.show_maps)
         m=self.menuBar().addMenu(tr('Eintrag'))
         for name,fn in [('Umbenennen',self.rename),('Löschen',self.delete),('Nach oben',lambda:self.move(-1)),('Nach unten',lambda:self.move(1))]:m.addAction(tr(name)).triggered.connect(fn)
         m=self.menuBar().addMenu(tr('Ansicht'));m.addAction(tr('Einstellungen'),self.preferences);m.addAction('Editor',lambda:self.navigate('editor'));m.addAction('Timeline',lambda:self.navigate('timeline'));m.addAction(tr('Welt'),lambda:self.navigate('world'));m.addAction(tr('Projektkalender'),self.calendar)
@@ -438,6 +448,9 @@ class Main(QMainWindow):
         def apply():
             self.settings.setValue('appearance/mode',mode.currentData());self.settings.setValue('appearance/accent',accent.currentData());self.settings.setValue('language',language.currentData());self.settings.sync();apply_theme(QApplication.instance(),mode.currentData(),accent.currentData())
             for editor in self.findChildren(Rich):editor.update_marks()
+            for index in range(self.tabs.count()):
+                page=self.tabs.widget(index)
+                if getattr(page,'worldmap_page',False):page.view.draw_map(keep=True)
             for view in self.findChildren(TimelineView):
                 view.scene().setBackgroundBrush(QApplication.palette().base())
                 for item in view.scene().items():
@@ -463,6 +476,7 @@ class Main(QMainWindow):
             b.clicked.connect(toggle);bar.addWidget(b)
         b=QToolButton();b.setText('A');b.setToolTip(tr('Textfarbe'));b.setFocusPolicy(Qt.StrongFocus);b.setAccessibleName(b.toolTip());b.clicked.connect(self.color);bar.addWidget(b);sep()
         for name,align,tip in [('left',Qt.AlignLeft,'Linksbündig'),('center',Qt.AlignHCenter,'Zentriert'),('right',Qt.AlignRight,'Rechtsbündig'),('justify',Qt.AlignJustify,'Blocksatz')]:bar.addWidget(tool(name,tip,lambda checked=False,a=align:self.editor() and self.editor().setAlignment(a)))
+        markdown=QToolButton();markdown.setText('MD');markdown.setToolTip(tr('Markdown bearbeiten · Strg+Alt+M'));markdown.setAccessibleName(markdown.toolTip());markdown.setFocusPolicy(Qt.StrongFocus);markdown.clicked.connect(lambda:self.editor() and self.editor().markdown());bar.addWidget(markdown)
         sep();bar.addWidget(tool('image','Bild einfügen',self.image));bar.addWidget(tool('link','Eintrag verknüpfen · @',lambda:self.editor() and self.editor().link()));bar.addWidget(tool('break','Seitenumbruch einfügen',self.pagebreak));bar.addStretch()
         bar.addWidget(tool('undo','Rückgängig · Strg+Z',lambda:self.editor() and self.editor().undo()));bar.addWidget(tool('redo','Wiederholen · Strg+Y',lambda:self.editor() and self.editor().redo()));bar.addWidget(tool('focus','Fokusmodus · F11',self.toggle_focus))
     def resizeEvent(self,event):
@@ -527,14 +541,21 @@ class Main(QMainWindow):
         for i in range(self.tabs.count()):
             if getattr(self.tabs.widget(i),'world_page',False):self.tabs.setCurrentIndex(i);self.tabs.widget(i).refresh_data();return
         page=WorldBrowser(self);self.tabs.addTab(page,tr('Deine Welt'));self.tabs.setCurrentWidget(page);self.breadcrumb.setText(tr('DEINE WELT'))
+    def show_maps(self):
+        for i in range(self.tabs.count()):
+            if getattr(self.tabs.widget(i),'worldmap_page',False):self.tabs.setCurrentIndex(i);self.tabs.widget(i).refresh_data();return
+        from worldmap_ui import MapBrowser
+        page=MapBrowser(self);self.tabs.addTab(page,tr('Weltkarten'));self.tabs.setCurrentWidget(page)
     def guard(self):
         if not self.dirty:return True
         r=QMessageBox.question(self,tr('Ungespeicherte Änderungen'),tr('Änderungen speichern?'),QMessageBox.Save|QMessageBox.Discard|QMessageBox.Cancel)
         return self.save() if r==QMessageBox.Save else r==QMessageBox.Discard
     def new(self):
         if not self.guard():return
-        name=ask(self,'Neues Projekt')
-        if name:self.adopt_project(project_for_language(name));self.changed()
+        from starter_ui import StarterDialog
+        dialog=StarterDialog(self)
+        if dialog.exec():self.adopt_project(dialog.project);self.changed()
+        dialog.deleteLater()
     def open_file(self,path=None):
         if not self.guard():return
         if not isinstance(path,str):path=QFileDialog.getOpenFileName(self,tr('Projekt öffnen'),'','Storynator (*.storynator *.bak)')[0]
@@ -1089,6 +1110,8 @@ def main():
                 import community as exchange
                 manager=CommunityDialog(w);assert manager.list.count()>=2;manager.accept()
                 sample=exchange.create(w.p,'reading',exchange.metadata('Smoke reading'),[w.p['documents'][0]['id']]);reader=ReaderDialog(w,sample);assert reader.docs.count()==1;reader.accept()
+                from feature_smoke import run_m19
+                run_m19(w)
                 w.dirty=False;w.close();app.processEvents();app.exit(0)
             except Exception:
                 import traceback

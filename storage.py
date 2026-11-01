@@ -58,6 +58,9 @@ def validate(p):
     if not isinstance(p.get('covers'),dict) or any(not isinstance(v,str) for v in p['covers'].values()):raise ValueError('Ungültige Cover-Zuordnung.')
     for key,value in p['assets'].items():
         if not isinstance(key,str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,200}',key) or key in ('.','..') or not isinstance(value,str):raise ValueError('Ungültige Projektressource.')
+    from mapmodel import validate_maps
+    from conlangs import validate_project as validate_lexicons
+    validate_maps(p);validate_lexicons(p)
     return p
 
 def save_project(project,path):

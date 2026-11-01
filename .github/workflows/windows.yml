@@ -81,9 +81,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $tag = "v0.7.$env:GITHUB_RUN_NUMBER"
+          $tag = "v0.8.$env:GITHUB_RUN_NUMBER"
           Get-FileHash dist/Storynator-Setup.exe,dist/Storynator-Portable.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Set-Content dist/SHA256SUMS.txt
-          $notes = "Storynator 0.7.1: Sichere Updates fuer Kategorievorlagen mit stabilen Feldkennungen. Umbenennen und Sortieren erhalten Werte; entfernte Felder und fruehere Typen bleiben archiviert. Konflikte nebeneinander pruefen, abhaengige Auswahlfilter validieren. Starterexporte behalten Kapitel- und Kategoriekennungen; identische Updates erzeugen keine Duplikate. Weltpaket-Updates erhalten alte Werte und Archive. Beim gewaehlten Ueberschreiben von Kapiteln werden Staende gesichert und Kommentare abgeloest. Austauschpakete v1 bleiben lesbar, neue Vorlagen/Starter verwenden v2. Windows-Tests, Skalierung, EXE und Installation geprueft. Setup ausfuehren, kein Python erforderlich. Weiterhin unsigniert."
+          $notes = "Storynator 0.8: M19 Featureerweiterung. Vordefinierte und importierbare Projektstarter. Markdown-Quelltext mit Live-Vorschau fuer Manuskript und Richtext-Felder, stabilen Verweisen und eingebetteten Bildern. Lokaler DOCX-Import mit Vorschau, Kapitelaufteilung, Formatierung, Listen, Tabellen und Bildern; Einschraenkungen werden angezeigt. Eigene Sprachwoerterbuecher mit Wortformen, Aussprache, Uebersetzung, CSV/JSON-Austausch und Offline-Rechtschreibung. Zoombare Weltkarten mit verschiebbaren Markierungen, Hover-Vorschau und verknuepften Eintraegen. Speicherung aller Kartenbilder und Woerterbuecher im Projekt. Windows-Tests, Skalierung, EXE und Installation geprueft. Setup ausfuehren, kein Python erforderlich. Weiterhin unsigniert."
           gh release create $tag dist/Storynator-Setup.exe dist/Storynator-Portable.zip dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title 'Storynator fuer Windows' --notes $notes --latest
       - uses: actions/upload-artifact@v4
         if: success()
