@@ -83,7 +83,8 @@ jobs:
           Copy-Item Beispiel.storynator $legacyProject
           $legacyBefore = (Get-FileHash $legacyProject -Algorithm SHA256).Hash
           $before = (Get-FileHash $project -Algorithm SHA256).Hash
-          $process = Start-Process dist/Storynator-Setup.exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/STORYNATORUPDATE=1', "/STORYNATORPROJECT=`"$project`"", "/DIR=`"$install`"") -Wait -PassThru
+          $process = Start-Process dist/Storynator-Setup.exe -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/STORYNATORUPDATE=1', "/STORYNATORPROJECT=`"$project`"", "/DIR=`"$install`"") -PassThru
+          if (-not $process.WaitForExit(120000)) { throw 'In-place installer timed out' }
           if ($process.ExitCode -ne 0) { throw 'In-place upgrade failed' }
           $env:PYTHONIOENCODING = 'utf-8'
           $expectedName = (python -c "import sys; from core import load_project; print(load_project(sys.argv[1])['name'])" $project).Trim()
