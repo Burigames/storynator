@@ -109,3 +109,8 @@ Zusätzliche Tests für Paketvalidierung und Rundlauf, private Felder, Abhängig
 Die PDF-Dokumenterzeugung wurde aus dem Hauptfenster in `printing.manuscript_document` verschoben und wird von Manuskript und Leseprobe gemeinsam genutzt. Die bestehenden Druck-/Covertests bleiben erforderlich. Der EXE-Smoke-Test öffnet zusätzlich Community-Bibliothek und Leser ohne Netzwerkzugriff. Das Laden des Online-Katalogs erfolgt nur manuell; Downloads sind asynchron, zeitlich und in der Größe begrenzt und werden gegen die Katalog-Prüfsumme geprüft. Die vier veröffentlichten Paketdateien werden gegen ihren Katalogeintrag getestet.
 
 Manuelle Grenzen bleiben: keine reale Hardware-/Screenreader-/physische Druckerabnahme und keine Codesignatur. Kategorievorlagen haben keinen automatischen Feldmigrations-Updatepfad; sie werden getrennt importiert. Weltpaket-Updates entscheiden Konflikte pro Objekt. HTML-Hosting und Freigabe eingereichter Community-Inhalte erfolgen manuell.
+
+
+## Version 0.7.1 – Vorlagenmigration und stabile Starter
+
+Zusätzliche Regressionen prüfen Feldumbenennung und Sortierung ohne Wertverlust, Archivierung entfernter Felder, neue Zielkennung bei Typwechsel, lokale Konfliktentscheidungen, selektiven Import mit stabilen Identitäten, v1-Kompatibilität/v2-Validierung, gleichbleibende eingebaute Challenges, Starter-Reexport ohne Duplikate, Erhalt alter Werte beim Weltpaket-Update, wiederholte Updates ohne doppelte Archive, konsistente Auswahlfilter bei abhängigen Konflikten, Kapitelstände/abgelöste Kommentare beim gewählten Überschreiben und Archiv-/Zuordnungs-Roundtrip. Die frühere Einschränkung zu reinen Kategorieupdates ist damit für neue Pakete aufgehoben.

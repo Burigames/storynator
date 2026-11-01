@@ -142,3 +142,55 @@ def test_export_identity_and_selection_can_be_resumed(project,tmp_path):
     h=Host();d=ExportDialog(h);d.previous.setCurrentIndex(1);assert d.export_meta['id']==meta['id'] and d.release.text()=='1.2' and d.deps.isChecked()
     from community_ui import selected
     assert selected(d.items)==['a'] and selected(d.fields)==['secret'];d.reject();h.close()
+
+def test_template_update_rename_reorder_and_archive_values(project):
+    s=c.create(project,'categories',c.metadata('Vorlagen'),['cat']);assert s['version']==2
+    q,_=c.plan_import(new_project(),s);cat=q['categories'][0];fieldids={f['name']:f['id'] for f in cat['fields']};portrait=fieldids['Porträt'];secret=fieldids['Geheimnis']
+    q['entries'].append(dict(id='mine',name='Meine Figur',category=cat['id'],values={portrait:'photo.png',secret:'Bleibt erhalten'},links=[],html=''))
+    project['categories'][0]['name']='Figuren';project['categories'][0]['fields'][1]['name']='Biografie';project['categories'][0]['fields'].reverse()
+    meta=copy.deepcopy(s['metadata']);meta['release']='2';s2=c.create(project,'categories',meta,['cat']);updated,conflicts=c.plan_update(q,s2);assert not conflicts
+    assert updated['categories'][0]['name']=='Figuren' and next(f for f in updated['categories'][0]['fields'] if f['name']=='Biografie')['id']==secret
+    project['categories'][0]['fields']=[f for f in project['categories'][0]['fields'] if f['id']!='portrait'];s3=c.create(project,'categories',meta,['cat']);final,conflicts=c.plan_update(updated,s3)
+    assert not conflicts and portrait in {f['id'] for f in final['categories'][0]['archived']};assert final['entries'][0]['values'][portrait]=='photo.png'
+def test_template_type_change_gets_new_identity_and_keeps_values(project):
+    s=c.create(project,'categories',c.metadata('Vorlagen'),['cat']);q,_=c.plan_import(new_project(),s);cat=q['categories'][0];old=cat['fields'][1]['id'];q['entries'].append(dict(id='my',name='Ich',category=cat['id'],values={old:'42'},links=[],html=''))
+    project['categories'][0]['fields'][1]['type']='Zahl';new=c.create(project,'categories',s['metadata'],['cat']);result,conflicts=c.plan_update(q,new);assert not conflicts
+    assert result['categories'][0]['fields'][1]['id']!=old and result['categories'][0]['archived'][0]['id']==old and result['entries'][0]['values'][old]=='42'
+def test_template_local_conflict_and_selective_identity(project):
+    s=c.create(project,'categories',c.metadata('Vorlagen'),['cat']);selected=c.select_import(s,[s['payload']['preset']['categories'][0]['key']]);assert selected['payload']['identities']==s['payload']['identities']
+    q,_=c.plan_import(new_project(),selected);q['categories'][0]['name']='Mein Name';project['categories'][0]['name']='Paketname';new=c.create(project,'categories',s['metadata'],['cat'])
+    result,conflicts=c.plan_update(q,new);assert len(conflicts)==1 and result['categories'][0]['name']=='Mein Name'
+    chosen,_=c.plan_update(q,new,{q['categories'][0]['id']:'package'});assert chosen['categories'][0]['name']=='Paketname'
+def test_starter_reexports_keep_source_ids_and_dont_duplicate(project):
+    s=c.create(project,'starter',c.metadata('Start'));s2=c.create(project,'starter',s['metadata']);assert s['payload']['project']['documents']==s2['payload']['project']['documents'];assert s['payload']['project']['categories']==s2['payload']['project']['categories']
+    q,_=c.plan_import(new_project(),s);updated,conflicts=c.plan_update(q,s2);assert not conflicts and len(updated['documents'])==len(q['documents']) and len(updated['categories'])==len(q['categories'])
+def test_template_v2_rejects_duplicate_ids_and_supports_legacy(project):
+    s=c.create(project,'categories',c.metadata('Vorlagen'),['cat']);bad=copy.deepcopy(s);identity=next(iter(bad['payload']['identities'].values()));identity['fields'][0]=identity['id']
+    with pytest.raises(ValueError):c.validate(bad)
+    legacy=copy.deepcopy(s);legacy['version']=1;legacy['payload'].pop('identities');q,_=c.plan_import(new_project(),legacy);assert q['categories']
+    with pytest.raises(ValueError,match='andere Feldkennungen'):c.plan_update(q,s)
+
+def test_builtin_challenges_are_stable_across_refreshes():
+    assert c.builtin_packages()==c.builtin_packages()
+def test_world_update_archives_removed_fields_and_keeps_local_values(project):
+    s=c.create(project,'world',c.metadata('Welt'),['a'],include_dependencies=True);q,_=c.plan_import(new_project(),s);cat=q['categories'][0];old=cat['fields'][1]['id'];project['categories'][0]['fields']=[f for f in project['categories'][0]['fields'] if f['id']!='secret'];project['entries'][0]['values'].pop('secret')
+    new=c.create(project,'world',s['metadata'],['a'],include_dependencies=True);result,conflicts=c.plan_update(q,new);assert not conflicts and old in {f['id'] for f in result['categories'][0]['archived']} and result['entries'][0]['values'][old]=='VERTRAULICH'
+def test_repeated_template_type_update_does_not_duplicate_archive(project):
+    s=c.create(project,'categories',c.metadata('T'),['cat']);q,_=c.plan_import(new_project(),s);project['categories'][0]['fields'][1]['type']='Zahl';new=c.create(project,'categories',s['metadata'],['cat']);q,_=c.plan_update(q,new);again,conflicts=c.plan_update(q,new);assert not conflicts and q['categories']==again['categories']
+
+def test_dependent_template_conflicts_cannot_apply_broken_filter(project):
+    project['categories'].append(dict(id='other',name='Andere',fields=[dict(id='choice',name='Auswahl',type='Dropdown',source_category='cat',source_filter={'field':'secret','op':'eq','value':'yes'})]))
+    s=c.create(project,'categories',c.metadata('Vorlagen'),['other']);q,_=c.plan_import(new_project(),s);cat=next(x for x in q['categories'] if x['name']=='Charaktere');cat['name']='Mein lokaler Name';project['categories'][0]['fields'][1]['type']='Zahl';new=c.create(project,'categories',s['metadata'],['other']);preview,conflicts=c.plan_update(q,new);assert conflicts
+    with pytest.raises(ValueError,match='Auswahlfilter'):c.plan_update(q,new,{cat['id']:'local'})
+    updated,_=c.plan_update(q,new,{cat['id']:'package'});assert next(x for x in updated['categories'] if x['id']==cat['id'])['name']=='Charaktere'
+def test_starter_overwrite_keeps_snapshot_and_detaches_comments(project):
+    s=c.create(project,'starter',c.metadata('Starter'));q,_=c.plan_import(new_project(),s);doc=q['documents'][-1];doc['html']='<p>Mein Text</p>';doc['annotations']=[dict(id='note',kind='comment',text='Notiz',start=0,end=4,quote='Mein')]
+    new=c.create(project,'starter',s['metadata']);updated,conflicts=c.plan_update(q,new,{doc['id']:'package'});target=next(d for d in updated['documents'] if d['id']==doc['id']);assert target['html']=='' and target['annotations'][0]['detached'];assert target['history'][-1]['content']['html']=='<p>Mein Text</p>'
+def test_template_archives_and_receipts_survive_save_reopen(project,tmp_path):
+    from storage import save_project,load_project
+    s=c.create(project,'categories',c.metadata('Vorlagen'),['cat']);q,_=c.plan_import(new_project(),s);project['categories'][0]['fields'].pop(1);new=c.create(project,'categories',s['metadata'],['cat']);updated,_=c.plan_update(q,new);path=tmp_path/'world.storynator';save_project(updated,path);reopened=load_project(path);assert reopened==updated;again,conflicts=c.plan_update(reopened,new);assert not conflicts and again['categories']==updated['categories']
+
+def test_public_packages_do_not_disclose_archived_field_values(project):
+    project['categories'][0]['archived']=[dict(id='old_private',name='Früheres Geheimnis',type='Text')];project['entries'][0]['values']['old_private']='ARCHIVGEHEIMNIS';project['entries'][0]['values']['unknown']='UNBEKANNTGEHEIM'
+    s=c.create(project,'world',c.metadata('Welt'),['a'],include_dependencies=True);text=json.dumps(s);assert 'ARCHIVGEHEIMNIS' not in text and 'UNBEKANNTGEHEIM' not in text
+    assert project['entries'][0]['values']['old_private']=='ARCHIVGEHEIMNIS'

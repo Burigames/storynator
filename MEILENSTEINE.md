@@ -186,7 +186,7 @@ Grenzen: Vorlagen enthalten weiterhin ihre sichtbaren Felddefinitionen, Auswahlo
 - [x] Einreichungsordner mit Paket, Metadaten und Anleitung; GitHub-Issues für Einreichungen und Fehlermeldungen.
 - [x] Windows-Dateizuordnung für `.storynator-pack`.
 
-Grenzen: Kalender und reine Kategorievorlagen werden über den geprüften Import übernommen; ein automatischer Vorlagenabgleich mit Feldmigration ist nicht enthalten. Bei Weltpaket-Updates wird je ganzem Objekt entschieden, nicht je Textabsatz/Feld. Eine ausgewählte Paketfassung ersetzt dieses Objekt einschließlich seiner Felder; zuvor wird gesichert. Es gibt keine Konten, öffentliche Kommentare/Bewertungen oder automatische Veröffentlichung. Katalogänderungen müssen durch den Repository-Betreiber geprüft und aufgenommen werden. Die Einreichungsfunktion verschickt selbst keine Nachricht.
+Grenzen: Kalender werden über den geprüften Import übernommen. Neue Kategoriepakete unterstützen ab 0.7.1 stabile Feldzuordnung und Archivierung; ältere Importe ohne passende Kennungen benötigen eine neue Kopie. Bei Weltpaket-Updates wird je ganzem Objekt entschieden, nicht je Textabsatz/Feld. Eine ausgewählte Paketfassung ersetzt dieses Objekt einschließlich seiner Felder; zuvor wird gesichert. Es gibt keine Konten, öffentliche Kommentare/Bewertungen oder automatische Veröffentlichung. Katalogänderungen müssen durch den Repository-Betreiber geprüft und aufgenommen werden. Die Einreichungsfunktion verschickt selbst keine Nachricht.
 
 ## M18 – Präsentation und Feedback
 - [x] Kapitelbasierte Lesefassung ohne interne Bearbeitungsmetadaten und ohne Welt-Datenbank.
@@ -204,3 +204,19 @@ Grenzen: HTML wird lokal exportiert; Hosting und die Aufnahme in ein öffentlich
 
 ## Prüfung 0.7
 Neue Integrationstests decken Paketrundlauf, Ausschlüsse, Abhängigkeiten, ID-Neuzuordnung, selektiven Import, Kalendergrenzen, reale PDF-Erzeugung, Feedback-Zuordnung, Bibliotheksversionen, Katalogquellen/Prüfsummen, Update-Konflikte, tatsächliche Projektübernahme mit Sicherung und deutsch/englische Dialoglayouts ab. Der Windows-Workflow prüft zusätzlich den Start der Community- und Leseroberfläche in der gebauten EXE.
+
+## Ergänzung 0.7.1 – Sichere Vorlagen-Updates
+- [x] Kategoriepakete v2 mit stabilen Kategorie- und Feldkennungen, unabhängig von Namen und Reihenfolge.
+- [x] Paket v1 weiterhin importierbar; unzuverlässige Zuordnung zwischen alten und neuen Kennungssystemen ausdrücklich abweisen.
+- [x] Updates reiner Kategoriepakete mit lokaler Konfliktentscheidung und direkter Gegenüberstellung.
+- [x] Feldumbenennung erhält Werte; entfernte Felder und frühere Typen werden archiviert statt gelöscht.
+- [x] Auch Weltpaket-Updates bewahren Feldarchive, frühere Werte und lokale Eintragsarchive.
+- [x] Auswahlfilter nach Konfliktentscheidungen auf verfügbare Quellfelder prüfen; bei Widersprüchen keine Projektübernahme.
+- [x] Stabile Kapitel-/Kategorie-/Feldkennungen beim erneuten Starterexport; keine zusätzlichen Kopien bei identischem Update.
+- [x] Eingebaute Challenges bleiben zwischen Bibliotheksaktualisierungen identisch.
+- [x] Vor ausdrücklich gewähltem Überschreiben eines Starter-Kapitels Kapitelstand anlegen und Kommentare ablösen.
+- [x] Archivdefinitionen und Updatezuordnung nach Speichern/erneutem Öffnen weiter nutzbar.
+
+Das Austauschformat v2 ist unabhängig vom Projektformat v3. Für vor 0.7.1 importierte Starter oder Kategoriepakete ohne passende Zuordnung wird keine heuristische Zuordnung anhand ähnlicher Namen vorgenommen.
+
+- [x] Öffentliche Weltpakete schließen archivierte und unbekannte Feldwerte aus; lokale Archive bleiben unverändert.

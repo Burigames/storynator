@@ -226,13 +226,18 @@ class CommunityDialog(QDialog):
             if conflicts:
                 d=QDialog(self);d.setWindowTitle(tr('Update-Konflikte · eigene Änderungen schützen'));box=QVBoxLayout(d);box.addWidget(label(tr('Je Objekt entscheiden. Standard: lokale Fassung behalten. Nicht mehr enthaltene Objekte werden nicht gelöscht.')));form=QFormLayout()
                 for conflict in conflicts:
-                    combo=ArrowCombo();combo.addItem(tr('Lokale Fassung behalten'),'local');combo.addItem(tr('Paketfassung übernehmen'),'package');form.addRow(conflict['name'],combo);choices[conflict['id']]=combo
+                    combo=ArrowCombo();combo.addItem(tr('Lokale Fassung behalten'),'local');combo.addItem(tr('Paketfassung übernehmen'),'package');row=QHBoxLayout();row.addWidget(combo);details=QPushButton(tr('Änderungen anzeigen'));details.clicked.connect(lambda checked=False,item=conflict:self.conflict_details(item));row.addWidget(details);form.addRow(conflict['name'],row);choices[conflict['id']]=combo
                 box.addLayout(form);button=QPushButton(tr('Entscheidungen übernehmen'));button.clicked.connect(d.accept);box.addWidget(button)
                 if d.exec()!=QDialog.Accepted:return
                 planned,_=exchange.plan_update(self.host.p,spec,{id:combo.currentData() for id,combo in choices.items()})
             if QMessageBox.question(self,tr('Paket aktualisieren'),tr('Unveränderte importierte Objekte aktualisieren und ausgewählte Konfliktentscheidungen übernehmen? Vorher wird eine Sicherung erstellt. Nicht mehr enthaltene Objekte bleiben erhalten.'))!=QMessageBox.Yes:return
             apply(self.host,planned,'Vor Paketaktualisierung');self.accept()
         except Exception as e:self.host.error(e)
+    def conflict_details(self,conflict):
+        d=QDialog(self);d.setWindowTitle(tr('Lokale Fassung und Paketfassung'));box=QVBoxLayout(d);split=QSplitter();box.addWidget(split)
+        for caption,value in [('Lokale Fassung',conflict['local']),('Paketfassung',conflict['incoming'])]:
+            pane=QWidget();layout=QVBoxLayout(pane);layout.addWidget(label(tr(caption)));view=QTextEdit();view.setReadOnly(True);view.setPlainText(json.dumps(value,ensure_ascii=False,indent=2) if value is not None else tr('Lokal gelöscht'));layout.addWidget(view);split.addWidget(pane)
+        d.resize(1000,680);d.exec()
     def remove(self):
         path,spec=self.current()
         if not path:return

@@ -83,3 +83,7 @@ EN.update({
 EN.update({'Inhalte':'Contents','Bilder / Ressourcen':'Images / resources'})
 
 EN.update({'Neues Paket':'New package','Eigene Pakete':'Your packages','Version':'Version'})
+
+EN.update({'Änderungen anzeigen':'Show changes','Lokale Fassung und Paketfassung':'Local and package versions','Lokale Fassung':'Local version','Paketfassung':'Package version','Lokal gelöscht':'Deleted locally','Vor Paketaktualisierung':'Before package update'})
+
+EN.update({'Für diese Vorlage fehlt die frühere Importzuordnung. Bitte als neue Kopie importieren.':'This template has no previous import mapping. Import it as a new copy.','Diese Vorlagenversion verwendet andere Feldkennungen. Bitte als neue Kopie importieren.':'This template version uses different field identities. Import it as a new copy.','Dieser ältere Starter hat keine stabilen Strukturkennungen. Bitte als neue Kopie importieren.':'This older starter has no stable structure identities. Import it as a new copy.','Eine Quellkategorie fehlt. Abhängige Update-Konflikte gemeinsam entscheiden.':'A source category is missing. Resolve dependent update conflicts together.','Ein Auswahlfilter benötigt ein nicht übernommenes Feld. Abhängige Update-Konflikte gemeinsam entscheiden.':'A choice filter requires a field that was not accepted. Resolve dependent update conflicts together.'})

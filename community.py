@@ -1,5 +1,5 @@
 """Offline, declarative exchange packages. Imports are planned on copies, never in-place."""
-import base64,copy,hashlib,html,json,os,re,tempfile,zipfile
+import base64,copy,hashlib,html,json,os,re,tempfile,zipfile,uuid
 from pathlib import Path
 from core import uid,new_project,Calendar
 from storage import validate as validate_project
@@ -28,18 +28,16 @@ def dependencies(p,ids):
 
 def create(p,kind,meta,ids=(),excluded_fields=(),include_dependencies=False,cover=''):
     if kind not in KINDS:raise ValueError('Unbekannter Pakettyp.')
-    q=new_project(meta['title']);q['documents']=[];excluded=set(excluded_fields)
-    if kind=='categories':payload={'preset':addons.export(p,ids,meta['title'])}
+    q=new_project(meta['title']);q['project_id']=str(uuid.uuid5(uuid.NAMESPACE_URL,'storynator.exchange:'+meta['id']));q['documents']=[];excluded=set(excluded_fields)
+    if kind=='categories':
+        from template_exchange import category_payload
+        payload=category_payload(p,ids,meta['title'])
     elif kind=='calendar':payload={'calendar':copy.deepcopy(p['calendar'])}
     else:
         q['calendar']=copy.deepcopy(p['calendar'])
         if kind in ['starter','challenge']:
-            preset=addons.export(p,[c['id'] for c in p['categories']],meta['title']) if p['categories'] else None
-            if preset:addons.enable(q,preset)
-            q.pop('addons',None)
-            for c in q['categories']:c.pop('source_addon',None);c.pop('addon_inactive',None)
-            docmap={d['id']:uid() for d in p['documents']}
-            q['documents']=[dict(id=docmap[d['id']],name=d['name'],kind=d.get('kind','chapter'),parent=docmap.get(d.get('parent')),html='') for d in p['documents']]
+            q['categories']=[dict(id=c['id'],name=c['name'],fields=copy.deepcopy(c['fields'])) for c in p['categories']]
+            q['documents']=[dict(id=d['id'],name=d['name'],kind=d.get('kind','chapter'),parent=d.get('parent'),html='') for d in p['documents']]
         if kind in ['world','showcase']:
             chosen=dependencies(p,ids) if include_dependencies else set(ids)
             q['entries']=[{k:copy.deepcopy(e[k]) for k in ['id','name','category','values','links','html'] if k in e} for e in p['entries'] if e['id'] in chosen]
@@ -52,8 +50,9 @@ def create(p,kind,meta,ids=(),excluded_fields=(),include_dependencies=False,cove
             for cat in q['categories']:
                 for field in cat['fields']:
                     if field.get('source_filter',{}).get('field') in excluded:field.pop('source_filter',None)
+            public_fields={cat['id']:{field['id'] for field in cat['fields']} for cat in q['categories']}
             for e in q['entries']:
-                e['values']={k:v for k,v in e['values'].items() if k not in excluded};e['links']=[k for k in e.get('links',[]) if k in chosen]
+                e['values']={k:v for k,v in e['values'].items() if k in public_fields[e['category']]};e['links']=[k for k in e.get('links',[]) if k in chosen]
             q['relationships']=[copy.deepcopy(r) for r in p.get('relationships',[]) if r['source'] in chosen and r['target'] in chosen]
             types={r['type'] for r in q['relationships']};q['relationship_types']=[copy.deepcopy(t) for t in p.get('relationship_types',[]) if t['id'] in types]
             # Never disclose names of unselected linked objects. Remove their anchors and field references.
@@ -90,18 +89,23 @@ def create(p,kind,meta,ids=(),excluded_fields=(),include_dependencies=False,cove
             if cover not in p['assets']:raise ValueError('Cover fehlt.')
             q['covers']['book']=cover
         used=asset_keys(q,p['assets']);q['assets']={k:p['assets'][k] for k in used};payload={'project':q}
-    result=dict(format=FORMAT,version=1,kind=kind,metadata=copy.deepcopy(meta),payload=payload)
+    result=dict(format=FORMAT,version=2 if kind in ['categories','starter','challenge'] else 1,kind=kind,metadata=copy.deepcopy(meta),payload=payload)
     return validate(result)
 
 def _validate(spec):
-    if not isinstance(spec,dict) or set(spec)!={'format','version','kind','metadata','payload'} or spec['format']!=FORMAT or spec['version']!=1 or spec['kind'] not in KINDS:raise ValueError('Unbekanntes Austauschformat.')
+    if not isinstance(spec,dict) or set(spec)!={'format','version','kind','metadata','payload'} or spec['format']!=FORMAT or spec['version'] not in [1,2] or spec['kind'] not in KINDS:raise ValueError('Unbekanntes Austauschformat.')
     m=spec['metadata']
     if not isinstance(m,dict) or set(m)-{'id','title','author','license','description','language','tags','release'}:raise ValueError('Ungültige Paketinformationen.')
     if any(not isinstance(m.get(k),str) or len(m[k])>10000 for k in ['id','title','author','license','description','language','release']) or not m['id'] or not m['title'].strip() or not m['license'].strip():raise ValueError('Titel, Kennung und Lizenz werden benötigt.')
     if not isinstance(m.get('tags'),list) or any(not isinstance(t,str) for t in m['tags']):raise ValueError('Ungültige Tags.')
     payload=spec['payload'];kind=spec['kind']
-    if not isinstance(payload,dict) or set(payload)!={ 'preset' if kind=='categories' else 'calendar' if kind=='calendar' else 'project'}:raise ValueError('Ungültiger Paketinhalt.')
-    if kind=='categories':addons.validate(payload['preset'])
+    expected={'preset','identities'} if kind=='categories' and spec['version']==2 else {'preset' if kind=='categories' else 'calendar' if kind=='calendar' else 'project'}
+    if not isinstance(payload,dict) or set(payload)!=expected:raise ValueError('Ungültiger Paketinhalt.')
+    if kind=='categories':
+        addons.validate(payload['preset'])
+        if spec['version']==2:
+            from template_exchange import validate_identities
+            validate_identities(payload['preset'],payload['identities'])
     elif kind=='calendar':Calendar(payload['calendar']).validate()
     else:
         p=payload['project'];validate_project(p);Calendar(p['calendar']).validate()
@@ -204,8 +208,13 @@ def select_import(spec,ids):
         for d in spec['payload']['project']['documents']:
             if d.get('parent') not in selected:d.pop('parent',None)
     elif kind=='categories':
-        q=new_project();addons.enable(q,spec['payload']['preset']);cats=q['categories'];wanted={cat['id'] for template,cat in zip(spec['payload']['preset']['categories'],cats) if template['key'] in ids}
-        spec['payload']['preset']=addons.export(q,wanted,spec['metadata']['title'])
+        preset=spec['payload']['preset'];lookup={c['key']:c for c in preset['categories']};chosen=set(ids);todo=list(chosen)
+        while todo:
+            for field in lookup[todo.pop()]['fields']:
+                source=field.get('source_category')
+                if source and source not in chosen:chosen.add(source);todo.append(source)
+        preset['categories']=[cat for cat in preset['categories'] if cat['key'] in chosen]
+        if 'identities' in spec['payload']:spec['payload']['identities']={k:v for k,v in spec['payload']['identities'].items() if k in chosen}
     return validate(spec)
 
 def plan_import(project,spec):
@@ -215,7 +224,8 @@ def plan_import(project,spec):
         if q['events'] or q.get('relationships') or any(f['type'] in ['Datum','Zeitspanne'] for c in q['categories'] for f in c['fields']):raise ValueError('Kalender nur vor datierten Inhalten importieren. Neues Projekt verwenden.')
         q['calendar']=copy.deepcopy(spec['payload']['calendar'])
     elif kind=='categories':
-        preset=copy.deepcopy(spec['payload']['preset']);preset['id']=uid();addons.enable(q,preset)
+        from template_exchange import import_categories
+        result,warnings=import_categories(project,spec);validate_project(result);return result,warnings
     elif kind in ['reading','showcase']:raise ValueError('Lesefassungen/Schaufenster werden separat geöffnet, nicht ins Arbeitsprojekt importiert.')
     else:
         p=spec['payload']['project']
@@ -233,7 +243,7 @@ def plan_import(project,spec):
                     warnings.append(o['name']+' → '+o['name']+' (Import)');o['name']+=' (Import)'
             q.setdefault(group,[]).extend(incoming.get(group,[]))
         q['assets'].update(incoming['assets'])
-    receipt=dict(package=spec['metadata']['id'],release=spec['metadata']['release'],hash=digest(spec))
+    receipt=dict(package=spec['metadata']['id'],release=spec['metadata']['release'],hash=digest(spec),stable_structure=kind in ['starter','challenge'] and spec['version']>=2)
     if kind in ['world','starter','challenge']:
         receipt['mapping']=mapping;receipt['baseline']={group:{o['id']:digest(o) for o in incoming.get(group,[])} for group in ['categories','entries','documents','relationships','relationship_types']}
     q.setdefault('community_imports',[]).append(receipt)
@@ -259,23 +269,32 @@ def builtin_packages():
     for title,prompt in [('Eine Stadt voller Geheimnisse','Entwirf eine Stadt, deren wichtigstes Gesetz ein Geheimnis schützt.'),('Erster Kontakt','Zwei Kulturen begegnen sich. Beide missverstehen ein Zeichen der anderen.')]:
         p=new_project(title);p['documents']=[dict(id=uid(),name=n,html='') for n in ['Ideen','Figuren','Entwurf']]
         m=metadata(title,'Storynator','CC0-1.0',prompt,tags=['Challenge']);m['id']='storynator.challenge.'+('city' if len(result)==0 else 'contact')
+        for d in p['documents']:d['id']=str(uuid.uuid5(uuid.NAMESPACE_URL,m['id']+':'+d['name']))
         result.append(create(p,'challenge',m))
     return result
 
 
 def plan_update(project,spec,choices=None):
     """Three-way object merge. Missing decisions retain local content; never delete objects."""
-    spec=validate(spec);choices=choices or {}
+    spec=validate(spec);requested_choices=choices;choices=choices or {}
+    if spec['kind']=='categories':
+        from template_exchange import update_categories
+        result,conflicts=update_categories(project,spec,requested_choices);validate_project(result);return result,conflicts
     if spec['kind'] not in ['world','starter','challenge']:raise ValueError('Für diesen Pakettyp bitte den geprüften Import verwenden.')
     receipt=next((r for r in reversed(project.get('community_imports',[])) if r['package']==spec['metadata']['id'] and 'mapping' in r),None)
     if receipt is None:raise ValueError('Kein zuordenbarer früherer Import. Als neue Kopie importieren.')
+    if spec['kind'] in ['starter','challenge'] and not receipt.get('stable_structure'):raise ValueError('Dieser ältere Starter hat keine stabilen Strukturkennungen. Bitte als neue Kopie importieren.')
     q=copy.deepcopy(project);p=spec['payload']['project'];mapping=copy.deepcopy(receipt['mapping'])
     if p['calendar']!=q['calendar'] and (p.get('relationships') or any(f['type'] in ['Datum','Zeitspanne'] for c in p['categories'] for f in c['fields'])):raise ValueError('Kalender stimmen nicht überein.')
     groups=['categories','entries','documents','relationships','relationship_types']
     for group in groups:
         for o in p.get(group,[]):mapping.setdefault(o['id'],uid())
+    local_categories={c['id']:c for c in q['categories']}
     for cat in p['categories']:
-        for f in cat['fields']:mapping.setdefault(f['id'],uid())
+        local_fields={f['id']:f for f in local_categories.get(mapping[cat['id']],{}).get('fields',[])}
+        for f in cat['fields']:
+            target=mapping.setdefault(f['id'],uid())
+            if target in local_fields and local_fields[target]['type']!=f['type']:mapping[f['id']]=uid()
     for key,value in p['assets'].items():
         if key not in mapping or q['assets'].get(mapping[key])!=value:mapping[key]=uid()+Path(key).suffix
     incoming=remap(p,mapping);conflicts=[];baseline=copy.deepcopy(receipt['baseline'])
@@ -288,9 +307,25 @@ def plan_update(project,spec,choices=None):
             if changed or removed:
                 conflicts.append(dict(id=id,group=group,name=o.get('name',id),local=local,incoming=o))
                 if choices.get(id,'local')!='package':continue
-            if local is not None:q[group]=[o if x['id']==id else x for x in q[group]]
+            if local is not None:
+                if group=='categories':
+                    from template_exchange import merge_category
+                    o=merge_category(local,o)
+                elif group=='entries':
+                    o={**copy.deepcopy(local),**o,'values':{**copy.deepcopy(local['values']),**o['values']}}
+                elif group=='documents':
+                    previous=copy.deepcopy(local)
+                    if local.get('html')!=o.get('html'):
+                        from authoring import snapshot
+                        snapshot(previous,'Vor Paketaktualisierung',True)
+                        for note in previous.get('annotations',[]):note.update(start=0,end=0,detached=True)
+                    o={**previous,**o}
+                q[group]=[o if x['id']==id else x for x in q[group]]
             else:q.setdefault(group,[]).append(o)
             baseline.setdefault(group,{})[id]=digest(o)
     q['assets'].update(incoming['assets'])
-    q.setdefault('community_imports',[]).append(dict(package=spec['metadata']['id'],release=spec['metadata']['release'],hash=digest(spec),mapping=mapping,baseline=baseline))
+    q.setdefault('community_imports',[]).append(dict(package=spec['metadata']['id'],release=spec['metadata']['release'],hash=digest(spec),mapping=mapping,baseline=baseline,stable_structure=receipt.get('stable_structure',False)))
+    if requested_choices is not None or not conflicts:
+        from template_exchange import check_dependencies
+        check_dependencies(q)
     validate_project(q);return q,conflicts
